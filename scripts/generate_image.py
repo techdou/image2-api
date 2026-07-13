@@ -43,7 +43,8 @@ def parser() -> argparse.ArgumentParser:
         choices=["auto", "single", "sequential"],
         help="auto uses sequential calls for count > 1 for relay compatibility.",
     )
-    p.add_argument("--output-dir", help="Run output directory. Defaults to output/<timestamp>_<slug> under current working directory.")
+    p.add_argument("--output-dir", help="Run output directory. Defaults to output/<name>_<timestamp> under current working directory.")
+    p.add_argument("--name", help="Semantic name for this generation. Used as directory and image filename (e.g. --name '海报主视觉' -> output/海报主视觉_20260714_xxx/海报主视觉.png). Falls back to prompt slug if omitted.")
     p.add_argument("--filename-prefix", default="image")
     p.add_argument(
         "--extra-param",
@@ -126,7 +127,7 @@ def main() -> int:
         if mode == "auto":
             mode = "single" if args.count == 1 else "sequential"
 
-        run = RunOutput(args.output_dir, prompt, args.filename_prefix)
+        run = RunOutput(args.output_dir, prompt, args.filename_prefix, name=getattr(args, "name", None))
         planned_payloads = (
             [_payload(args, prompt, config.model, args.count)]
             if mode == "single"
@@ -160,7 +161,7 @@ def main() -> int:
             responses.append(api_result.safe_summary())
             for entry in extract_image_entries(api_result.payload):
                 data = entry_to_bytes(client, entry)
-                path = run.image_path(output_index, args.output_format)
+                path = run.image_path(output_index, args.output_format, total=args.count)
                 info = validate_image_bytes(data, path.name)
                 actual_ext = extension_for_format(info.format)
                 if path.suffix.lower() != actual_ext:

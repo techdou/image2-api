@@ -47,6 +47,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--count", type=int, default=1)
     p.add_argument("--batch-mode", default="auto", choices=["auto", "single", "sequential"])
     p.add_argument("--output-dir")
+    p.add_argument("--name", help="Semantic name for this edit. Used as directory and image filename.")
     p.add_argument("--filename-prefix", default="edited")
     p.add_argument("--extra-param", action="append", default=[], metavar="KEY=VALUE")
     p.add_argument("--timeout", type=float)
@@ -144,7 +145,7 @@ def main() -> int:
                 for _ in range(args.count)
             ]
         )
-        run = RunOutput(args.output_dir, prompt, args.filename_prefix)
+        run = RunOutput(args.output_dir, prompt, args.filename_prefix, name=getattr(args, "name", None))
         run.write_request(
             {
                 "operation": "edit",
@@ -174,7 +175,7 @@ def main() -> int:
             responses.append(api_result.safe_summary())
             for entry in extract_image_entries(api_result.payload):
                 data = entry_to_bytes(client, entry)
-                path = run.image_path(output_index, args.output_format)
+                path = run.image_path(output_index, args.output_format, total=args.count)
                 info = validate_image_bytes(data, path.name)
                 actual_ext = extension_for_format(info.format)
                 if path.suffix.lower() != actual_ext:

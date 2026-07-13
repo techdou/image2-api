@@ -20,9 +20,11 @@ _URL_KEYS = {"url", "image_url", "download_url", "signed_url"}
 
 
 def safe_slug(text: str, max_length: int = 48) -> str:
-    text = text.strip().lower()
-    text = re.sub(r"[^\w\-]+", "-", text, flags=re.UNICODE)
-    text = re.sub(r"-+", "-", text).strip("-_ ")
+    text = text.strip()
+    # Remove Windows-unsafe chars and collapse whitespace, keep CJK + alphanumeric + hyphens
+    text = re.sub(r'[\\/:*?"<>|\n\r\t]+', "-", text)
+    text = re.sub(r"\s+", "-", text)
+    text = re.sub(r"-{2,}", "-", text).strip("-")
     return text[:max_length].rstrip("-") or "image-run"
 
 

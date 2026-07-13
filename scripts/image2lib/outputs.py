@@ -20,19 +20,32 @@ def extension_for_format(image_format: str) -> str:
 
 
 class RunOutput:
-    def __init__(self, output_dir: str | None, prompt: str, prefix: str = "image") -> None:
+    def __init__(
+        self,
+        output_dir: str | None,
+        prompt: str,
+        prefix: str = "image",
+        name: str | None = None,
+    ) -> None:
         if output_dir:
             path = Path(output_dir)
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            path = Path("output") / f"{timestamp}_{safe_slug(prompt[:80])}"
+            if name:
+                slug = safe_slug(name, 60)
+                path = Path("output") / f"{slug}_{timestamp}"
+                self.prefix = slug
+            else:
+                path = Path("output") / f"{timestamp}_{safe_slug(prompt[:80])}"
+                self.prefix = safe_slug(prefix, 32)
         self.path = path.resolve()
         self.path.mkdir(parents=True, exist_ok=True)
-        self.prefix = safe_slug(prefix, 32)
         (self.path / "prompt.txt").write_text(prompt.rstrip() + "\n", encoding="utf-8")
 
-    def image_path(self, index: int, output_format: str) -> Path:
+    def image_path(self, index: int, output_format: str, total: int = 1) -> Path:
         ext = extension_for_format(output_format)
+        if total <= 1:
+            return self.path / f"{self.prefix}{ext}"
         return self.path / f"{self.prefix}_{index:02d}{ext}"
 
     def write_request(self, request: dict[str, Any]) -> None:
