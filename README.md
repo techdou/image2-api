@@ -1,6 +1,39 @@
 # image2-api
 
+> English below · [中文导读](#中文导读)
+
 `image2-api` is an Agent Skill for generating and editing images through an OpenAI-compatible Images API or third-party GPT Image 2 relay. Version 1.2 adds a strict Agent Skills activation boundary, relay-alias model-family handling, package validation, trigger-evaluation fixtures, and several API-safety corrections.
+
+---
+
+## 中文导读
+
+**这是什么**：一个 Agent Skill，通过 OpenAI 兼容的 Images API（或第三方 GPT Image 2 中转）生成、编辑图片。**不用于**普通内置画图——只有当工作流明确涉及 API/中转、自定义端点、模型别名、图生图、蒙版、prompt 编译或需要可复现的运行元数据时才触发。
+
+**快速上手**：
+
+```bash
+# 1. 装依赖（Python 3.10+）
+pip install -r requirements.txt
+
+# 2. 配置秘钥（.env 已被 gitignore，不会上传）
+cp .env.example .env
+# 编辑 .env，填入 IMAGE_API_KEY 和 IMAGE_API_BASE_URL
+
+# 3. 自检配置（不花额度）
+python scripts/doctor.py
+
+# 4. 生成一张图（先 dry-run 校验）
+python scripts/generate_image.py --prompt-file prompt.txt --dry-run --json
+```
+
+**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · 结构化 brief → GPT Image 2 prompt 编译 · prompt 审查 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测。
+
+**文档地图**（`references/` 目录）：`agent-routing` 触发边界 · `gpt-image-2-prompt-guide` prompt 设计 · `prompt-recipes` 配方 · `api-compatibility` API 细节 · `troubleshooting` 排错。
+
+**秘钥安全**：真实 `.env`、虚拟环境、IDE 配置、`outputs/` 运行产物均已按 [.gitignore](.gitignore) 排除；推送前已扫描确认无硬编码凭据。
+
+---
 
 This skill is intentionally **not** the default route for ordinary “draw an image” requests. Use it when the workflow explicitly requires an API/relay, custom endpoint, model alias, image-edit request, mask, prompt compiler/reviewer, or reproducible run metadata.
 

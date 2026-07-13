@@ -1,8 +1,62 @@
+# ─── 私密信息 / 凭据 (绝不上传) ──────────────────────────
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+credentials.json
+.env.local
+.env.production
+
+# ─── Python 开发产物 ─────────────────────────────────────
 .venv/
 venv/
+env/
 __pycache__/
 *.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+develop-eggs/
+
+# ─── 测试 / 类型检查 / lint 缓存 ─────────────────────────
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ─── 运行时产物 (生成图只留目录占位) ─────────────────────
 outputs/*
 !outputs/.gitkeep
+
+# ─── 编辑器 / IDE 配置目录 (不上传) ─────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── 虚拟环境锁定文件按需, 默认忽略 ─────────────────────
+# (如用 pip-tools 想提交 .in 文件, 自行取消注释)
+# *.lock
+Pipfile.lock
+poetry.lock
+
+# ─── 日志 / 临时文件 ─────────────────────────────────────
+*.log
+logs/
+*.tmp
+*.bak
+*.cache
