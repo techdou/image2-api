@@ -1,0 +1,28 @@
+{
+  "profile": "academic-diagram",
+  "operation": "generate",
+  "deliverable": "Clean academic framework diagram in 16:9 landscape",
+  "subject": "A six-stage multimodal machine-learning architecture",
+  "composition": "Six aligned columns connected left to right, dashed rounded module groups, consistent arrows, clear hierarchy, generous spacing",
+  "style": "Peer-reviewed paper figure, white background, thin vector lines, low-saturation fills, mathematically restrained",
+  "palette": "Muted blue, sage, sand, lavender, and charcoal",
+  "text": {
+    "exact": [
+      "Inputs",
+      "Encoders",
+      "Label Graph GCN",
+      "Routing Decoder",
+      "Evidential Fusion",
+      "Outputs"
+    ],
+    "placement": "One short heading centered above each of the six columns",
+    "hierarchy": "Consistent semibold module headings; no paragraph text",
+    "language": "English"
+  },
+  "constraints": [
+    "No decorative 3D effects",
+    "No gradients",
+    "No numbered stage badges",
+    "All arrows must have a clear direction"
+  ]
+}

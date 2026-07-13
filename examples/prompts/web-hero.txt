@@ -1,0 +1,24 @@
+Create the following asset: 16:9 website hero illustration.
+
+Scene and background:
+Quiet editorial studio blending handmade materials and subtle digital interfaces.
+
+Main subject:
+A warm humanistic workspace where a small ceramic technology mascot helps organize knowledge cards, diagrams, and code fragments.
+
+Composition and hierarchy:
+Mascot and knowledge system on the left two-thirds; clean negative space on the right for headline copy; layered foreground, midground, and background.
+
+Visual treatment:
+Premium editorial illustration with tactile ceramic and paper textures, restrained interface overlays.
+
+Lighting and color:
+Morning window light, soft shadows, calm atmosphere. Oatmeal, clay, warm beige, muted sage, fog blue, charcoal.
+
+On-image text:
+Do not render any text, letters, numbers, captions, logos, or watermarks.
+
+Requirements:
+- Do not use neon gradients.
+- Do not make the scene look like a generic SaaS stock illustration.
+- Keep the right side visually quiet.

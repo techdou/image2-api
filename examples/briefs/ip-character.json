@@ -1,0 +1,18 @@
+{
+  "profile": "ip-character",
+  "operation": "generate",
+  "deliverable": "Square primary IP character illustration for a personal technology knowledge brand",
+  "subject": "A friendly, memorable bean-shaped deer spirit named TechDou, with a restrained antler motif and a small technology seed emblem",
+  "action": "Standing calmly and looking toward the viewer with an intelligent, warm expression",
+  "environment": "Minimal studio backdrop with subtle paper and ceramic textures",
+  "composition": "Centered full-body character, clear silhouette, generous safe margin, icon-readable at small size",
+  "style": "Warm ceramic-humanistic technology aesthetic; soft editorial 3D illustration; simple forms rather than toy-like plastic",
+  "lighting": "Soft diffused key light from upper left, gentle contact shadow, low contrast",
+  "palette": "Warm clay, oatmeal, muted terracotta, fog blue, and charcoal accents",
+  "text": "No text",
+  "constraints": [
+    "Keep the silhouette distinctive and easy to redraw",
+    "Use no more than five dominant colors",
+    "Avoid generic robot elements, neon cyberpunk, glossy plastic, and busy backgrounds"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "profile": "project-hero",
+  "operation": "generate",
+  "deliverable": "Polished 16:9 repository hero image for VibeCanvas",
+  "purpose": "GitHub README header, repository social preview, and launch announcement",
+  "audience": "Developers building agent-native image generation workflows",
+  "scene": "A calm, minimal creative workspace where a visual canvas connects prompt cards, reference images, edit masks, and generated artifacts into one coherent workflow",
+  "subject": "An original abstract canvas symbol formed from a rounded frame and a flowing image ribbon, communicating iteration, control, and visual creation",
+  "key_details": [
+    "subtle nodes suggesting generation, editing, review, and version history",
+    "the symbol must remain recognizable at small social-card size",
+    "clean repository-ready visual hierarchy"
+  ],
+  "composition": "Place the symbol on the left third. Reserve the right half as a quiet text-safe region. Keep generous margins for 16:9 social-card cropping and a clear three-level hierarchy",
+  "style": "Warm humanistic technology editorial design with tactile paper and ceramic cues, restrained vector-meets-soft-3D rendering, original and non-infringing",
+  "lighting": "Soft diffused studio light with gentle depth and no dramatic glow",
+  "palette": "Warm clay, oatmeal, muted terracotta, fog blue, charcoal, and off-white",
+  "text": {
+    "exact": [
+      "VibeCanvas",
+      "Agent-native image workflows"
+    ],
+    "placement": "Right text-safe region",
+    "hierarchy": "Project name large and bold; descriptor smaller beneath it",
+    "language": "English",
+    "spelling": "V-i-b-e-C-a-n-v-a-s"
+  },
+  "typography": "Clean modern grotesk, strong contrast, crisp and highly legible",
+  "constraints": [
+    "render the project name exactly once",
+    "use no unrelated logos, watermarks, code screenshots, browser chrome, or stock robot imagery",
+    "do not combine multiple unrelated visual metaphors",
+    "keep the background visually quiet behind the text"
+  ]
+}

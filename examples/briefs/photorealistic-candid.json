@@ -1,0 +1,17 @@
+{
+  "profile": "photorealistic",
+  "operation": "generate",
+  "deliverable": "Photorealistic candid editorial photograph",
+  "purpose": "Feature article header about open-source maintainers",
+  "scene": "A modest home studio at dusk with a laptop, handwritten architecture notes, a soldering kit, and a window showing soft city rain",
+  "subject": "An independent software maintainer in their early thirties wearing a worn overshirt, reviewing a pull request while holding a mug",
+  "action": "Looking at the laptop rather than the camera, one hand on the trackpad, relaxed and absorbed in the work",
+  "composition": "Waist-up environmental portrait, subject on the right third, working desk visible on the left, natural foreground depth",
+  "camera": "Photorealistic candid photograph, eye-level 50mm look, shallow but believable depth of field, subtle film grain",
+  "style": "Honest documentary photography with natural skin, fabric wear, fingerprints, cable clutter, and ordinary imperfections",
+  "lighting": "Soft monitor glow balanced with warm desk light and cool rainy window light, natural contrast",
+  "text": "No text",
+  "constraints": [
+    "no glamorized retouching, plastic skin, staged pose, neon cyberpunk lighting, watermark, or extra people"
+  ]
+}

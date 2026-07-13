@@ -1,0 +1,30 @@
+Create the following asset: Polished 16:9 repository hero image for VibeCanvas. Intended use: GitHub README header, repository social preview, and launch announcement. Intended audience: Developers building agent-native image generation workflows.
+
+Scene and background:
+A calm, minimal creative workspace where a visual canvas connects prompt cards, reference images, edit masks, and generated artifacts into one coherent workflow.
+
+Main subject:
+An original abstract canvas symbol formed from a rounded frame and a flowing image ribbon, communicating iteration, control, and visual creation.
+
+Key visual details:
+- subtle nodes suggesting generation, editing, review, and version history.
+- the symbol must remain recognizable at small social-card size.
+- clean repository-ready visual hierarchy.
+
+Composition and hierarchy:
+Place the symbol on the left third. Reserve the right half as a quiet text-safe region. Keep generous margins for 16:9 social-card cropping and a clear three-level hierarchy.
+
+Visual treatment:
+Warm humanistic technology editorial design with tactile paper and ceramic cues, restrained vector-meets-soft-3D rendering, original and non-infringing.
+
+Lighting and color:
+Soft diffused studio light with gentle depth and no dramatic glow. Warm clay, oatmeal, muted terracotta, fog blue, charcoal, and off-white.
+
+On-image text:
+Render only this copy, exactly and verbatim: "VibeCanvas"; "Agent-native image workflows". Language: English. Placement: Right text-safe region. Hierarchy: Project name large and bold; descriptor smaller beneath it. Spelling aid: V-i-b-e-C-a-n-v-a-s. Typography: Clean modern grotesk, strong contrast, crisp and highly legible.
+
+Requirements:
+- render the project name exactly once.
+- use no unrelated logos, watermarks, code screenshots, browser chrome, or stock robot imagery.
+- do not combine multiple unrelated visual metaphors.
+- keep the background visually quiet behind the text.

@@ -1,0 +1,28 @@
+{
+  "profile": "ad",
+  "operation": "generate",
+  "deliverable": "Vertical launch poster for VibeCanvas",
+  "purpose": "Social media launch announcement",
+  "audience": "AI developers and open-source contributors",
+  "scene": "A refined editorial composition showing a visual workflow moving from prompt to reference image to edited artifact",
+  "subject": "A bold original canvas symbol surrounded by three restrained workflow cards",
+  "composition": "Vertical 4:5 poster with strong top-to-bottom hierarchy, symbol in the upper half, text in a clean lower block, generous margins",
+  "style": "Modernist editorial poster with tactile paper grain and geometric shapes, polished but not corporate-stock",
+  "palette": "Off-white, black, warm red, fog blue, and muted sand",
+  "text": {
+    "exact": [
+      "VibeCanvas",
+      "Create. Edit. Review.",
+      "Open-source agent-native image workflows"
+    ],
+    "placement": "Project name at top, short line in the middle, descriptor at bottom",
+    "hierarchy": "Large project name, medium action line, small descriptor",
+    "language": "English",
+    "spelling": "V-i-b-e-C-a-n-v-a-s"
+  },
+  "typography": "Bold modern grotesk with crisp high-contrast lettering",
+  "constraints": [
+    "render each supplied line exactly once and verbatim",
+    "no extra text, watermark, unrelated logo, illegible microcopy, or decorative lorem ipsum"
+  ]
+}

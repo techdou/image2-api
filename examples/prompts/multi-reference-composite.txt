@@ -1,0 +1,24 @@
+Edit the provided image or images. Target asset: Photorealistic product-in-scene composite.
+
+Reference-image roles:
+- Image 1: Primary room scene, camera, crop, and lighting reference.
+- Image 2: Exact product geometry, label, and color reference.
+- Image 3: Ceramic surface material reference only.
+
+Preserve exactly:
+- Image 1 camera angle, room geometry, furniture, window, floor shadows, crop, and overall color balance.
+- Image 2 product silhouette, proportions, label spelling, cap, and packaging geometry.
+
+Change only:
+- place the product from Image 2 on the front-right corner of the table in Image 1.
+- apply only the matte ceramic surface character from Image 3 while keeping the product label crisp and unchanged.
+
+Composition and geometry:
+The product should occupy about 12 percent of the frame and sit naturally on the table without blocking existing objects.
+
+Lighting and color:
+Match Image 1 light direction, contact shadow, reflections, and color temperature.
+
+Requirements:
+- keep everything else unchanged.
+- do not redesign the product, add copy, move furniture, alter the room, or introduce extra objects.

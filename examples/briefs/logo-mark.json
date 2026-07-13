@@ -1,0 +1,16 @@
+{
+  "profile": "logo",
+  "operation": "generate",
+  "deliverable": "Original square logo mark for an agent-native image workflow project named VibeCanvas",
+  "purpose": "Repository avatar, favicon, app icon, and documentation header",
+  "subject": "A single abstract symbol combining a rounded canvas frame with one flowing ribbon or brush path, suggesting generation, editing, and revision without using a literal robot",
+  "composition": "Centered symbol, strong figure-ground separation, generous safe margin, readable at 32 pixels, no mockup surface",
+  "style": "Simple geometric mark with warm humanistic technology character, clean vector-like edges, distinctive and easy to redraw",
+  "palette": "Two or three colors maximum: warm clay, fog blue, and charcoal on an opaque off-white background",
+  "text": "No text",
+  "constraints": [
+    "no gradients that disappear at small size",
+    "no tiny details, letters, watermark, stationery mockup, 3D room, or unrelated emblem",
+    "original design only; do not imitate an existing logo"
+  ]
+}

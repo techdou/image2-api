@@ -1,0 +1,61 @@
+{
+  "skill": "image2-api",
+  "version": "1.2.0",
+  "cases": [
+    {
+      "id": "positive-relay-generation",
+      "expected": "select",
+      "prompt": "用我配置的 OpenAI 兼容三方 API 和 gpt-image-2 生成一张开源项目头图。"
+    },
+    {
+      "id": "positive-model-alias",
+      "expected": "select",
+      "prompt": "供应商把 GPT Image 2 写成 image-2，请配置 model family 并调用 /v1/images/generations。"
+    },
+    {
+      "id": "positive-prompt-review",
+      "expected": "select",
+      "prompt": "严格 review 这段准备发给 GPT Image 2 API 的 prompt，并修复不符合规范的部分。"
+    },
+    {
+      "id": "positive-edit-mask",
+      "expected": "select",
+      "prompt": "通过 Images edits API 使用两张参考图和一个 PNG mask，只修改衣服并保持人物身份。"
+    },
+    {
+      "id": "positive-dry-run",
+      "expected": "select",
+      "prompt": "将需求编译成 GPT Image 2 prompt，针对我的 relay 做 dry-run，不要实际扣费。"
+    },
+    {
+      "id": "negative-built-in-draw",
+      "expected": "do-not-select",
+      "prompt": "帮我画一只可爱的猫。"
+    },
+    {
+      "id": "negative-presentation-image",
+      "expected": "do-not-select",
+      "prompt": "给我的汇报生成一张机制图。"
+    },
+    {
+      "id": "negative-image-analysis",
+      "expected": "do-not-select",
+      "prompt": "分析我上传照片里的构图问题。"
+    },
+    {
+      "id": "negative-theory",
+      "expected": "do-not-select",
+      "prompt": "解释扩散模型为什么能生成图片。"
+    },
+    {
+      "id": "negative-web-app",
+      "expected": "do-not-select",
+      "prompt": "用 React 做一个图片画廊网页。"
+    },
+    {
+      "id": "ambiguous-generate",
+      "expected": "do-not-select",
+      "prompt": "帮我生图。"
+    }
+  ]
+}

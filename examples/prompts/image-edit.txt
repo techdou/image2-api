@@ -1,0 +1,18 @@
+Edit the provided image or images. Target asset: Reference-preserving character environment edit.
+
+Reference-image roles:
+Image 1: Primary canvas and exact character identity.
+
+Preserve exactly:
+Face, antlers, silhouette, body proportions, clothing, expression, pose, camera angle, crop, and core palette.
+
+Change only:
+Replace only the background with a warm ceramic-humanistic technology studio and add a small knowledge card on the desk.
+
+Lighting and color:
+Match the original subject lighting and integrate the new background naturally.
+
+Requirements:
+- Do not redesign the character.
+- Do not add extra limbs or accessories.
+- Do not change the subject scale.

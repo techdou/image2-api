@@ -1,0 +1,24 @@
+{
+  "profile": "composite",
+  "operation": "edit",
+  "deliverable": "Photorealistic product-in-scene composite",
+  "references": {
+    "Image 1": "Primary room scene, camera, crop, and lighting reference",
+    "Image 2": "Exact product geometry, label, and color reference",
+    "Image 3": "Ceramic surface material reference only"
+  },
+  "preserve": [
+    "Image 1 camera angle, room geometry, furniture, window, floor shadows, crop, and overall color balance",
+    "Image 2 product silhouette, proportions, label spelling, cap, and packaging geometry"
+  ],
+  "changes": [
+    "place the product from Image 2 on the front-right corner of the table in Image 1",
+    "apply only the matte ceramic surface character from Image 3 while keeping the product label crisp and unchanged"
+  ],
+  "composition": "The product should occupy about 12 percent of the frame and sit naturally on the table without blocking existing objects",
+  "lighting": "Match Image 1 light direction, contact shadow, reflections, and color temperature",
+  "constraints": [
+    "keep everything else unchanged",
+    "do not redesign the product, add copy, move furniture, alter the room, or introduce extra objects"
+  ]
+}

@@ -1,0 +1,23 @@
+Create the following asset: Vertical launch poster for VibeCanvas. Intended use: Social media launch announcement. Intended audience: AI developers and open-source contributors.
+
+Scene and background:
+A refined editorial composition showing a visual workflow moving from prompt to reference image to edited artifact.
+
+Main subject:
+A bold original canvas symbol surrounded by three restrained workflow cards.
+
+Composition and hierarchy:
+Vertical 4:5 poster with strong top-to-bottom hierarchy, symbol in the upper half, text in a clean lower block, generous margins.
+
+Visual treatment:
+Modernist editorial poster with tactile paper grain and geometric shapes, polished but not corporate-stock.
+
+Lighting and color:
+Off-white, black, warm red, fog blue, and muted sand.
+
+On-image text:
+Render only this copy, exactly and verbatim: "VibeCanvas"; "Create. Edit. Review."; "Open-source agent-native image workflows". Language: English. Placement: Project name at top, short line in the middle, descriptor at bottom. Hierarchy: Large project name, medium action line, small descriptor. Spelling aid: V-i-b-e-C-a-n-v-a-s. Typography: Bold modern grotesk with crisp high-contrast lettering.
+
+Requirements:
+- render each supplied line exactly once and verbatim.
+- no extra text, watermark, unrelated logo, illegible microcopy, or decorative lorem ipsum.

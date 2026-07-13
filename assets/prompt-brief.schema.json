@@ -1,0 +1,466 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techdou.com/schemas/image2-prompt-brief.schema.json",
+  "title": "GPT Image 2 prompt brief",
+  "type": "object",
+  "minProperties": 1,
+  "properties": {
+    "profile": {
+      "type": "string",
+      "enum": [
+        "general",
+        "photorealistic",
+        "illustration",
+        "logo",
+        "project-hero",
+        "ip-character",
+        "ad",
+        "infographic",
+        "academic-diagram",
+        "ui-mockup",
+        "comic",
+        "product",
+        "character-sheet",
+        "edit",
+        "composite",
+        "translation"
+      ]
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "generate",
+        "edit"
+      ]
+    },
+    "deliverable": {
+      "type": "string",
+      "minLength": 1
+    },
+    "purpose": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "audience": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "scene": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "subject": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "key_details": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "composition": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "camera": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "style": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "materials": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "lighting": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "palette": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "text": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "exact": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "placement": {
+              "type": "string"
+            },
+            "hierarchy": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            },
+            "spelling": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "typography": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "references": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "preserve": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "translation": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "changes": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "constraints": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "avoid": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

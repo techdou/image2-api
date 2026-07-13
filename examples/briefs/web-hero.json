@@ -1,0 +1,17 @@
+{
+  "profile": "illustration",
+  "operation": "generate",
+  "deliverable": "16:9 website hero illustration",
+  "subject": "A warm humanistic workspace where a small ceramic technology mascot helps organize knowledge cards, diagrams, and code fragments",
+  "environment": "Quiet editorial studio blending handmade materials and subtle digital interfaces",
+  "composition": "Mascot and knowledge system on the left two-thirds; clean negative space on the right for headline copy; layered foreground, midground, and background",
+  "style": "Premium editorial illustration with tactile ceramic and paper textures, restrained interface overlays",
+  "lighting": "Morning window light, soft shadows, calm atmosphere",
+  "palette": "Oatmeal, clay, warm beige, muted sage, fog blue, charcoal",
+  "text": "No rendered text; reserve space for HTML typography",
+  "constraints": [
+    "Do not use neon gradients",
+    "Do not make the scene look like a generic SaaS stock illustration",
+    "Keep the right side visually quiet"
+  ]
+}

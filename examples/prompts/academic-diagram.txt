@@ -1,0 +1,22 @@
+Create the following asset: Clean academic framework diagram in 16:9 landscape.
+
+Main subject:
+A six-stage multimodal machine-learning architecture.
+
+Composition and hierarchy:
+Six aligned columns connected left to right, dashed rounded module groups, consistent arrows, clear hierarchy, generous spacing.
+
+Visual treatment:
+Peer-reviewed paper figure, white background, thin vector lines, low-saturation fills, mathematically restrained.
+
+Lighting and color:
+Muted blue, sage, sand, lavender, and charcoal.
+
+On-image text:
+Render only this copy, exactly and verbatim: "Inputs"; "Encoders"; "Label Graph GCN"; "Routing Decoder"; "Evidential Fusion"; "Outputs". Language: English. Placement: One short heading centered above each of the six columns. Hierarchy: Consistent semibold module headings; no paragraph text.
+
+Requirements:
+- No decorative 3D effects.
+- No gradients.
+- No numbered stage badges.
+- All arrows must have a clear direction.

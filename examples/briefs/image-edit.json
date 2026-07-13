@@ -1,0 +1,17 @@
+{
+  "profile": "edit",
+  "operation": "edit",
+  "references": {
+    "Image 1": "Primary canvas and exact character identity"
+  },
+  "deliverable": "Reference-preserving character environment edit",
+  "subject": "Use image 1 as the exact identity and primary canvas",
+  "changes": "Replace only the background with a warm ceramic-humanistic technology studio and add a small knowledge card on the desk",
+  "preserve": "Face, antlers, silhouette, body proportions, clothing, expression, pose, camera angle, crop, and core palette",
+  "lighting": "Match the original subject lighting and integrate the new background naturally",
+  "constraints": [
+    "Do not redesign the character",
+    "Do not add extra limbs or accessories",
+    "Do not change the subject scale"
+  ]
+}
