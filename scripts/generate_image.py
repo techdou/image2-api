@@ -31,7 +31,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--base-url", help="API base URL override, normally ending in /v1.")
     p.add_argument("--endpoint", help="Full generation endpoint override.")
     p.add_argument("--size", default="auto", help="auto or WIDTHxHEIGHT.")
-    p.add_argument("--quality", default="high", choices=["low", "medium", "high", "auto"])
+    p.add_argument("--quality", default="medium", choices=["low", "medium", "high", "auto"])
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
     p.add_argument("--output-format", default="png", choices=["png", "jpeg", "webp"])
     p.add_argument("--output-compression", type=int)
@@ -55,6 +55,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float)
     p.add_argument("--max-retries", type=int)
     p.add_argument("--dry-run", action="store_true", help="Validate and print the sanitized request without calling the API.")
+    p.add_argument("--test", action="store_true", help="Cost-saving test mode: forces quality=low (cheapest output tokens). Overrides --quality.")
     p.add_argument("--json", action="store_true", help="Print a machine-readable result object.")
     return p
 
@@ -84,6 +85,8 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
 
 def main() -> int:
     args = parser().parse_args()
+    if getattr(args, "test", False):
+        args.quality = "low"
     try:
         prompt = read_prompt(args.prompt, args.prompt_file)
         config = APIConfig.from_env(
