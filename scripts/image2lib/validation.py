@@ -179,10 +179,9 @@ def validate_generation_options(
         if width <= 0 or height <= 0:
             raise ValueError("size edges must be positive integers.")
         if is_image2:
-            if width >= 3840 or height >= 3840:
+            if width > 3840 or height > 3840:
                 raise ValueError(
-                    "For gpt-image-2, each edge must be less than 3840 pixels. "
-                    "Use 3824 or lower when a relay enforces the rule literally."
+                    "For gpt-image-2, each edge must not exceed 3840 pixels (4K tier)."
                 )
             if width % 16 or height % 16:
                 raise ValueError("For gpt-image-2, both edges must be multiples of 16.")
@@ -193,10 +192,6 @@ def validate_generation_options(
                 )
             if max(width, height) / min(width, height) > 3:
                 raise ValueError("For gpt-image-2, the long-to-short edge ratio cannot exceed 3:1.")
-            if pixels > 3_686_400:
-                warnings.append(
-                    "This resolution exceeds the recommended 2560x1440 reliability boundary and is experimental on official gpt-image-2."
-                )
         elif size not in {"1024x1024", "1536x1024", "1024x1536"}:
             warnings.append(
                 "The selected model family is not GPT Image 2; this relay may only accept standard sizes."

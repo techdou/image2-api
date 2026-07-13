@@ -15,7 +15,7 @@
 
 ## 400 invalid parameter
 
-- Retry with `1024x1024`, `1536x1024`, or `1024x1536`.
+- Retry with a standard size like `1024x1024`, `1536x1024`, or `1024x1536` to test whether the relay rejects large or custom dimensions. GPT Image 2 supports up to 3840×3840 natively, but some relays cap resolution or remap sizes — check actual output in `metadata.json`.
 - Remove relay-unsupported fields.
 - Use `background=auto` rather than transparent for `gpt-image-2`.
 - Do not send `input_fidelity` for GPT Image 2.

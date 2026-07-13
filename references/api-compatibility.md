@@ -48,11 +48,11 @@ The local validator applies these current model rules:
 - background: `auto` or `opaque`; official GPT Image 2 does not support transparent output;
 - output compression: 0–100, only for JPEG or WebP;
 - output count: 1–10 per CLI run;
-- custom dimensions: both edges are positive multiples of 16, each edge is below 3840 px, aspect ratio is at most 3:1, and total pixels are 655,360–8,294,400;
-- resolutions above the 2560×1440 reliability boundary are treated as experimental;
+- custom dimensions: GPT Image 2 accepts any resolution satisfying these constraints (per OpenAI image-generation guide): each edge ≤ 3840 px; both edges multiples of 16; total pixels 655,360–8,294,400; long-to-short edge ratio ≤ 3:1; 1K/2K/4K tiers map roughly to longest edge ~1024 / ~2048 / ~3840; common sizes include 1024×1024, 1536×1024, 1024×1536, 2048×2048, 2048×1152, 3840×2160, 2160×3840; aspect ratios are flexible (1:1, 2:3, 3:2, 16:9, 9:16, etc.);
+- this skill defaults to 2880×2880 (max legal square, 8,294,400 px) since most relays bill per-call, not per-pixel; for 16:9 use `3840x2160`, for 9:16 use `2160x3840`, for 4:5 use `2304x2880`; override with `--size` when a smaller output is desired;
 - `input_fidelity` is removed for GPT Image 2 because the model processes image inputs at high fidelity automatically.
 
-Third-party relays may implement a narrower size set. Prefer `1024x1024`, `1536x1024`, and `1024x1536` until flexible sizes are proven.
+Third-party relays may cap resolution or remap sizes. GPT Image 2 natively supports up to 4K (3840px longest edge); verify a relay passes through your requested size by checking actual output dimensions in `metadata.json`.
 
 ## Edit inputs and masks
 

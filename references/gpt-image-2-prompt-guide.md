@@ -178,8 +178,8 @@ Specify product geometry, label integrity, materials, background, contact shadow
 - `quality=low`: drafts, thumbnails, ideation, high-volume variants.
 - `quality=medium`: general production candidates.
 - `quality=high`: dense typography, detailed educational visuals, close portraits, identity-sensitive edits, and final assets.
-- Standard portable sizes: `1024x1024`, `1536x1024`, and `1024x1536`.
-- Common flexible sizes include `2048x1152`, `2048x2048`, and `2560x1440`, subject to relay support.
+- Resolution tiers: 1K (~1024px), 2K (~2048px), 4K (~3840px longest edge). GPT Image 2 accepts any size where both edges are multiples of 16, each ≤ 3840 px, ratio ≤ 3:1, total pixels 655,360–8,294,400.
+- Common sizes: `1024x1024`, `1536x1024`, `1024x1536`, `2048x2048`, `2880x2880`, `3840x2160`, `2160x3840`. This skill defaults to `2880x2880` (max legal square, same pixel budget as 4K 16:9); most relays bill per-call so large sizes have no cost penalty.
 - Official GPT Image 2 does not support transparent output. Use an opaque/plain background and remove it later.
 - Omit `input_fidelity`; it is fixed at high fidelity for GPT Image 2 inputs.
 
