@@ -1,0 +1,74 @@
+A professional brand visual asset board / design system component sheet for AIGC certificate promotional materials. Vertical 4:5 composition on warm white background (#F7F5F1). This is NOT a poster — it is a modular visual component library display, like a brand style guide page or design system reference sheet. Studio quality, commercial design standard, high-end minimalist aesthetic.
+
+ABSOLUTE RULES — must obey strictly:
+- NO indoor scenes, NO people, NO flowers, NO lamps, NO furniture, NO desktops, NO photographic backgrounds.
+- The entire canvas is a clean warm-white flat surface, like a designer's artboard.
+- Every Chinese character MUST be rendered clearly, accurately, with ZERO garbled text, ZERO mojibake, ZERO missing strokes. Text legibility is the highest priority.
+- All UI components must have complete edges, uniform rounded corners, consistent stroke weights, and clear spacing between each module — they must NOT overlap or touch each other.
+
+BRAND PALETTE (use exactly):
+- DeZe Green (primary): #0E4B3F — deep sophisticated forest green
+- DeZe Gold (accent): #C8A163 — muted warm gold
+- Warm White (background): #F7F5F1
+- Dark Ink Gray (body text): #333333
+
+STYLE: premium, authoritative, warm, restrained, minimalist. Rounded cards with thin gold borders, soft shadows, ultra-minimal line icons. Typography blends modern Song-style serif (宋体) with subtle calligraphic brush feeling for display headings.
+
+LAYOUT (top to bottom, generous margins and gutters between every module):
+
+[Header — top, centered]
+Title: "AIGC 证书海报复用素材" (large, DeZe green, modern Song serif)
+Subtitle directly below: "艺术字 / 信息卡 / 模块组件" (smaller, dark gray)
+A thin gold horizontal divider line with minimal decorative dots underneath.
+
+[Module 1 — Display Typography Specimen]
+Large display heading text, standalone with abundant whitespace around it for future cropping:
+"生成式人工智能技术应用" — very large, DeZe green (#0E4B3F), premium modern Song serif with subtle calligraphic touch, restrained gold highlight strokes on key characters.
+Below it, a smaller secondary art-text line:
+"职业技能培训证书" — medium size, DeZe green with gold accent line beneath.
+
+[Module 2 — Banner Component]
+A standalone deep green (#0E4B3F) rounded-corner horizontal banner with thin gold (#C8A163) border. Minimalist gold laurel leaf motifs on left and right ends. Banner text in gold:
+"系统课程 + 官方证书 + 实战应用"
+
+[Module 3 — Three Highlight Cards]
+Three separate rounded cards arranged horizontally, warm white fill, light gold title capsules, dark gray body text, thin gold border, soft shadow. Each card has a small minimalist line icon at top.
+
+Card 1 — icon: certificate/medal outline
+Title (in gold capsule): "权威证书"
+Body: "人社部能建中心" / "官方可查 ethrss.cn"
+
+Card 2 — icon: book/curriculum outline
+Title (in gold capsule): "系统课程"
+Body: "6章 28节" / "47学时 / 2115分钟"
+
+Card 3 — icon: layered/layers outline
+Title (in gold capsule): "三大班型"
+Body: "应用班" / "师资班 / 商业班"
+
+[Module 4 — Vertical Sidebar Brand Component]
+A slender, elegant vertical brand identification group (designed to be placed on poster left or right edge).
+Main vertical text: "AIGC" then "培训" (stacked, large, DeZe green).
+Beside it, a deep green vertical rounded label with gold text running vertically:
+"中国AI人才缺口500万"
+
+[Module 5 — Issuer & Enrollment Info Card]
+One large standalone rounded info card, divided into three clearly separated sections by light gold dashed divider lines.
+
+Section A — minimalist medal/certificate line icon
+Heading (gold): "发证单位"
+Body (dark gray): "人力资源和社会保障部" / "社会保障能力建设中心"
+
+Section B — minimalist people/figure line icon
+Heading (gold): "报考对象"
+Body: "社会学员" / "在校学生及离校未就业高校毕业生"
+
+Section C — minimalist RMB/currency line icon
+Heading (gold): "参考费用"
+Body: "社会学员：2880元/人" / "学生群体：1200元/人"
+
+[Module 6 — Supplementary Text Bar]
+A small standalone rounded info bar with a minimalist book line icon. Text:
+"配套教材：《生成式人工智能》"
+
+RENDER QUALITY: ultra high resolution, crisp vector-like edges, commercial graphic design quality, the look of a professional brand asset package / design system specification page. Every component is a clean reusable asset with generous breathing room. Chinese text perfectly legible, no artifacts.
