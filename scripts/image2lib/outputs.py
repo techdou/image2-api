@@ -25,7 +25,7 @@ class RunOutput:
             path = Path(output_dir)
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            path = Path("outputs") / f"{timestamp}_{safe_slug(prompt[:80])}"
+            path = Path("output") / f"{timestamp}_{safe_slug(prompt[:80])}"
         self.path = path.resolve()
         self.path.mkdir(parents=True, exist_ok=True)
         self.prefix = safe_slug(prefix, 32)

@@ -38,7 +38,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--prompt-lint", default="warn", choices=["off", "warn", "strict"], help="Review prompt quality before the API call.")
     p.add_argument("--base-url", help="API base URL override, normally ending in /v1.")
     p.add_argument("--endpoint", help="Full edit endpoint override.")
-    p.add_argument("--size", default="2880x2880", help="WIDTHxHEIGHT. GPT Image 2: each edge <=3840px, multiples of 16, ratio <=3:1, total pixels 655,360-8,294,400. Max square 2880x2880, max 16:9 3840x2160, max 9:16 2160x3840.")
+    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2: edges <=3840px, multiples of 16, ratio <=3:1.")
     p.add_argument("--quality", default="high", choices=["low", "medium", "high", "auto"])
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
     p.add_argument("--output-format", default="png", choices=["png", "jpeg", "webp"])

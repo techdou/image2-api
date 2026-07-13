@@ -34,9 +34,9 @@ develop-eggs/
 htmlcov/
 coverage.xml
 
-# ─── 运行时产物 (生成图只留目录占位) ─────────────────────
-outputs/*
-!outputs/.gitkeep
+# ─── 运行时产物 (生成图输出到工作目录的 output/) ─────────
+output/
+outputs/
 
 # ─── 编辑器 / IDE 配置目录 (不上传) ─────────────────────
 .vscode/
