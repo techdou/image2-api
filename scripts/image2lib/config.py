@@ -15,10 +15,48 @@ except ImportError:  # doctor.py reports the missing optional dependency.
 MODEL_FAMILIES = ("auto", "gpt-image-2", "gpt-image-1.5", "generic")
 
 
+def _find_skill_root() -> Path:
+    """Walk up from this file to find the skill root (contains SKILL.md)."""
+    current = Path(__file__).resolve()
+    for parent in [current, *current.parents]:
+        if (parent / "SKILL.md").is_file():
+            return parent
+    return current.parents[2]
+
+
+def _resolve_skill_root() -> Path:
+    """Find the real skill root that contains .env.
+
+    Problem: on Windows, .claude/skills/ may be a plain directory copy (not a
+    symlink/junction), so the skill root found by walking up from __file__ has
+    no .env (it was gitignored). We check multiple known locations.
+    """
+    import os
+
+    here = _find_skill_root()
+
+    # If this skill root has .env, use it directly
+    if (here / ".env").is_file():
+        return here
+
+    # Try common alternative locations where the real skill installation lives
+    home = Path.home()
+    candidates = [
+        home / ".agents" / "skills" / "image2-api",
+        home / ".claude" / "skills" / "image2-api",
+        here,  # fallback to the discovered root
+    ]
+    for candidate in candidates:
+        if (candidate / ".env").is_file():
+            return candidate
+
+    return here
+
+
 def _load_env_files() -> None:
     if load_dotenv is None:
         return
-    skill_root = Path(__file__).resolve().parents[2]
+    skill_root = _resolve_skill_root()
     candidates = [Path.cwd() / ".env", skill_root / ".env"]
     seen: set[Path] = set()
     for path in candidates:
