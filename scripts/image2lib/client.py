@@ -226,12 +226,29 @@ class ImageAPIClient:
         # Rebuild URL against this provider's endpoint when caller passed
         # the original endpoint. Generate/edit endpoints differ per provider.
         provider_url = self._endpoint_for_profile(url, profile)
+        # Caller-provided headers (from generate()/edit()) carry the PRIMARY
+        # provider's Authorization. We must NOT let it override this profile's
+        # credentials, so we drop Authorization from caller headers and let
+        # the explicit profile auth below win.
+        caller_headers = dict(kwargs.pop("headers", {}))
+        caller_headers.pop("Authorization", None)
+        caller_headers.pop("authorization", None)
         headers = {
             "Authorization": f"Bearer {profile.api_key}",
             "User-Agent": f"image2-api/{__version__}",
             **profile.extra_headers,
-            **kwargs.pop("headers", {}),
+            **caller_headers,
         }
+        # When the chain swaps providers, the request payload's "model" field
+        # (set by generate_image.py from the primary provider's model name)
+        # must be rewritten to this profile's model, otherwise the alternate
+        # provider rejects it as an unknown model.
+        body = kwargs.get("json")
+        if isinstance(body, dict) and "model" in body:
+            kwargs["json"] = {**body, "model": profile.model}
+        data = kwargs.get("data")
+        if isinstance(data, dict) and "model" in data:
+            kwargs["data"] = {**data, "model": profile.model}
         last_exc: Exception | None = None
         attempts = 0
         with httpx.Client(
