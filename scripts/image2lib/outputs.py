@@ -27,8 +27,14 @@ class RunOutput:
         prefix: str = "image",
         name: str | None = None,
     ) -> None:
+        # Always initialize self.prefix first so image_path() never hits
+        # AttributeError when the caller passes output_dir explicitly.
+        self.prefix = safe_slug(name or prefix, 32)
         if output_dir:
             path = Path(output_dir)
+            # If a name was provided alongside output_dir, prefer it as prefix.
+            if name:
+                self.prefix = safe_slug(name, 60)
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if name:
