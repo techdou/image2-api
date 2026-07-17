@@ -8,8 +8,33 @@
 *.pfx
 secrets.json
 credentials.json
+config.local.json
+config.local.yaml
+config.local.yml
+service-account*.json
+firebase-adminsdk*.json
+*-credentials.json
+*_credentials.json
+*_creds.json
+gha-creds.json
+google-credentials.json
+aws-credentials.json
 .env.local
 .env.production
+.env.staging
+.env.development
+
+# SSH / GPG / TLS private keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.ppk
+*.asc
+*credentials*
+*creds*
+tmp_credentials
+.tmp_credentials
 
 # ─── Python 开发产物 ─────────────────────────────────────
 .venv/
@@ -33,26 +58,51 @@ develop-eggs/
 .coverage.*
 htmlcov/
 coverage.xml
+.cache/
 
 # ─── 运行时产物 (生成图输出到工作目录的 output/) ─────────
 output/
 outputs/
 
-# ─── 编辑器 / IDE 配置目录 (不上传) ─────────────────────
+# ─── 编辑器 / IDE / AI 助手配置目录 (不上传) ────────────
 .vscode/
 .idea/
+.cursor/
+.devcontainer/
+.claude/
+.windsurf/
+.trae/
+.kiro/
+.roo/
+.continue/
+.aider/
 *.swp
 *.swo
 *~
 .DS_Store
 Thumbs.db
 desktop.ini
+.AppleDouble
+.bash_history
+.zsh_history
 
-# ─── 虚拟环境锁定文件按需, 默认忽略 ─────────────────────
-# (如用 pip-tools 想提交 .in 文件, 自行取消注释)
-# *.lock
+# ─── Python / 工具版本文件 (开发机器本地) ──────────────
+.python-version
+.tool-versions
+.python_env
+.python_history
+
+# ─── 锁文件 (按需提交, 默认忽略) ─────────────────────────
+# uv/pip-tools/poetry 都生成 lock, CI 用 requirements.txt 即可
+# Pipfile 本身是项目依赖声明, 应该提交, 这里不忽略
+uv.lock
 Pipfile.lock
 poetry.lock
+*.lock
+
+# ─── 类型/lint 配置 (开发机器本地, 项目根通常不需要) ──
+pyrightconfig.json
+.ruff.toml
 
 # ─── 日志 / 临时文件 ─────────────────────────────────────
 *.log
@@ -60,3 +110,12 @@ logs/
 *.tmp
 *.bak
 *.cache
+*.swp
+*.swo
+*.orig
+*.rej
+
+# ─── Node (scripts/ 拉 npm 包时偶尔会用到) ─────────────
+node_modules/
+.npm/
+.yarn/
