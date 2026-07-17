@@ -22,6 +22,21 @@
 - Use sequential mode instead of `n > 1`.
 - For edits, verify the relay implements multipart `/images/edits`.
 
+## All providers failed (multi-provider mode)
+
+If you configured `IMAGE_API_PROVIDERS` and every provider was exhausted:
+
+- The error message lists each provider's last status code and reason, e.g.
+  `All 2 providers failed [fenno -> backup]: fenno(HTTP 503): ...; backup(HTTP 401): ...`.
+- A 401/403 from one provider means the key/permission for that provider is
+  wrong — fix the key in `.env` rather than adding more fallback providers.
+- A 503/429 from every provider indicates a regional outage or quota
+  exhaustion; wait or upgrade the plan on the working provider.
+- If only the last provider failed with a non-fallback code (e.g. 400), the
+  chain did not retry because the code is not in `IMAGE_API_FALLBACK_STATUS`.
+  Either fix the request or extend the fallback status set.
+- Use `python scripts/doctor.py` to confirm the chain parses correctly.
+
 ## Prompt doctor fails
 
 Run a readable report:

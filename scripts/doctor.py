@@ -77,7 +77,18 @@ def main() -> int:
         for name, value in checks["dependencies"].items():
             print(f"Dependency {name}: {value}")
         if checks.get("config"):
-            for key, value in checks["config"].items():
+            cfg = checks["config"]
+            chain = cfg.get("chain")
+            if chain:
+                print(f"chain: {len(chain['providers'])} providers, fallback on status {chain['fallback_status']} network={chain['fallback_on_network_error']}")
+                for idx, profile in enumerate(chain["providers"]):
+                    marker = " (primary)" if idx == 0 else " (standby)"
+                    print(f"  provider {profile['name']}{marker}: {profile['base_url']} model={profile['model']} key_set={profile['api_key_configured']}")
+            else:
+                print("chain: not configured (single-provider mode)")
+            for key, value in cfg.items():
+                if key == "chain":
+                    continue
                 print(f"{key}: {value}")
         for warning in checks.get("warnings", []):
             print(f"Warning: {warning}", file=sys.stderr)

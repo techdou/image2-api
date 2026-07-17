@@ -104,3 +104,56 @@ Use this sequence for a new provider:
 9. multiple outputs or sequential batching
 
 Document any unsupported capability instead of assuming OpenAI compatibility implies full feature parity.
+
+## Multi-provider fallback
+
+When `IMAGE_API_PROVIDERS` is set in `.env`, the legacy single-provider
+variables (`IMAGE_API_KEY`, `IMAGE_API_BASE_URL`, etc.) are ignored. Each
+provider is fully self-contained under its own `IMAGE_API_<NAME>_*` set
+and providers are tried in the order listed.
+
+```dotenv
+IMAGE_API_PROVIDERS=fenno,backup
+
+IMAGE_API_FENNO_KEY=sk-...
+IMAGE_API_FENNO_BASE_URL=https://api.fenno.ai/v1
+IMAGE_API_FENNO_MODEL=gpt-image-2
+IMAGE_API_FENNO_MODEL_FAMILY=gpt-image-2
+IMAGE_API_FENNO_MAX_RETRIES=2
+
+IMAGE_API_BACKUP_KEY=sk-...
+IMAGE_API_BACKUP_BASE_URL=https://backup.example.com/v1
+IMAGE_API_BACKUP_MODEL=gpt-image-2
+IMAGE_API_BACKUP_MODEL_FAMILY=gpt-image-2
+IMAGE_API_BACKUP_MAX_RETRIES=2
+```
+
+A provider triggers fallback when:
+
+- The HTTP response status code is in `IMAGE_API_FALLBACK_STATUS`
+  (default `429, 500, 502, 503, 504`), **or**
+- A network error occurs (timeout, connection refused, DNS failure) when
+  `network_error` is included in the fallback status string (it is by default).
+
+Within a single provider, the configured `IMAGE_API_<NAME>_MAX_RETRIES`
+(default 2) internal retries are exhausted before moving on. So a primary
+that fails twice with 503 will yield to the next provider.
+
+Status codes **not** in the fallback set terminate the request immediately
+(e.g. 400 means a malformed payload — switching providers will not help).
+
+When every provider fails, the skill raises `ProviderChainError` whose
+`.attempts` attribute is a list describing each provider's outcome.
+Inspect `response_summary.json` for the `provider` field on each successful
+response; the chain error message includes the per-provider failure summary.
+
+Run `doctor.py` to confirm the chain layout:
+
+```text
+chain: 2 providers, fallback on status [429, 500, 502, 503, 504] network=True
+  provider fenno (primary): https://api.fenno.ai/v1 model=gpt-image-2 key_set=True
+  provider backup (standby): https://backup.example.com/v1 model=gpt-image-2 key_set=True
+```
+
+The ImageAPIClient API stays identical whether one or many providers are
+configured; existing scripts and CI need no changes.

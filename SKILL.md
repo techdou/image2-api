@@ -23,6 +23,18 @@ Use this skill only for an explicit OpenAI-compatible Images API or third-party 
 | Diagnose configuration or probe a relay | `python scripts/doctor.py` |
 | Validate this skill package | `python scripts/validate_skill.py` |
 
+## Configuration modes
+
+This skill supports two configuration modes. Pick one.
+
+- **Single-provider (default).** Set `IMAGE_API_KEY`, `IMAGE_API_BASE_URL`,
+  `IMAGE_API_MODEL`, `IMAGE_API_MODEL_FAMILY`. Use for one upstream relay
+  or direct OpenAI access.
+- **Multi-provider with automatic fallback.** Set `IMAGE_API_PROVIDERS=fenno,backup`
+  plus an `IMAGE_API_<NAME>_*` block per provider. The skill tries providers
+  in order; a 429/5xx or network failure moves to the next provider.
+  See `references/api-compatibility.md` for the full schema.
+
 Read `references/agent-routing.md` when the activation boundary is unclear. Read only the task-specific reference files needed for the current request.
 
 ## Execute the workflow

@@ -161,6 +161,138 @@ def resolve_model_family(model: str, configured: str | None = None) -> str:
 
 
 @dataclass(slots=True)
+class ProviderProfile:
+    """Configuration for a single upstream image API provider.
+
+    Used as a building block of ProviderChain. Each provider is fully
+    self-contained — no inheritance between providers — so the .env format
+    stays simple and explicit.
+    """
+
+    name: str
+    api_key: str
+    base_url: str
+    model: str = "gpt-image-2"
+    model_family: str = "auto"
+    generations_url: str | None = None
+    edits_url: str | None = None
+    timeout: float = 180.0
+    max_retries: int = 2
+    verify_ssl: bool = True
+    extra_headers: dict[str, str] = field(default_factory=dict)
+
+    def resolved_model_family(self) -> str:
+        return resolve_model_family(self.model, self.model_family)
+
+    def generation_endpoint(self) -> str:
+        return build_endpoint(self.base_url, "generation", self.generations_url)
+
+    def edit_endpoint(self) -> str:
+        return build_endpoint(self.base_url, "edit", self.edits_url)
+
+    def safe_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "api_key_configured": bool(self.api_key),
+            "base_url": self.base_url,
+            "model": self.model,
+            "model_family": self.resolved_model_family(),
+            "generation_endpoint": self.generation_endpoint(),
+            "edit_endpoint": self.edit_endpoint(),
+            "timeout": self.timeout,
+            "max_retries": self.max_retries,
+            "verify_ssl": self.verify_ssl,
+            "extra_header_names": sorted(self.extra_headers),
+        }
+
+
+@dataclass(slots=True)
+class ProviderChain:
+    """Ordered list of providers with fallback policy.
+
+    The chain is consulted in order; a provider whose response signals a
+    fallback-eligible error (status code in fallback_status, or a network
+    error when fallback_on_network_error is true) causes the next provider
+    to be tried. All providers exhausting without success raises
+    ProviderChainError.
+    """
+
+    profiles: list[ProviderProfile]
+    fallback_status: set[int] = field(default_factory=lambda: {429, 500, 502, 503, 504})
+    fallback_on_network_error: bool = True  # dataclass default
+
+    @classmethod
+    def from_env(cls) -> "ProviderChain | None":
+        """Parse IMAGE_API_PROVIDERS from environment. Returns None if not set,
+        meaning the legacy single-provider code path should be used.
+        """
+        raw = os.getenv("IMAGE_API_PROVIDERS", "").strip()
+        if not raw:
+            return None
+        names = [n.strip() for n in raw.split(",") if n.strip()]
+        if not names:
+            return None
+        # Validate that we can build all profiles before raising on a later one
+        profiles: list[ProviderProfile] = []
+        for name in names:
+            profiles.append(_profile_from_env(name))
+        fallback_status_raw = os.getenv("IMAGE_API_FALLBACK_STATUS", "429,500,502,503,504,network_error")
+        fallback_status: set[int] = set()
+        fallback_on_network_error = False
+        for part in fallback_status_raw.split(","):
+            token = part.strip().lower()
+            if not token:
+                continue
+            if token == "network_error":
+                fallback_on_network_error = True
+                continue
+            try:
+                fallback_status.add(int(token))
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid IMAGE_API_FALLBACK_STATUS value {token!r}; "
+                    "expected an integer status code or 'network_error'."
+                ) from exc
+        return cls(
+            profiles=profiles,
+            fallback_status=fallback_status,
+            fallback_on_network_error=fallback_on_network_error,
+        )
+
+    def safe_dict(self) -> dict[str, Any]:
+        return {
+            "providers": [p.safe_dict() for p in self.profiles],
+            "fallback_status": sorted(self.fallback_status),
+            "fallback_on_network_error": self.fallback_on_network_error,
+        }
+
+
+def _profile_from_env(name: str) -> ProviderProfile:
+    """Build a ProviderProfile by reading IMAGE_API_<NAME>_* environment variables."""
+    upper = name.upper()
+    base_url_raw = os.getenv(f"IMAGE_API_{upper}_BASE_URL", "").strip()
+    if not base_url_raw:
+        raise ValueError(
+            f"Provider {name!r} is listed in IMAGE_API_PROVIDERS but "
+            f"IMAGE_API_{upper}_BASE_URL is not set."
+        )
+    api_key = os.getenv(f"IMAGE_API_{upper}_KEY", "").strip()
+    return ProviderProfile(
+        name=name,
+        api_key=api_key,
+        base_url=normalize_base_url(base_url_raw),
+        model=os.getenv(f"IMAGE_API_{upper}_MODEL", "gpt-image-2").strip(),
+        model_family=os.getenv(f"IMAGE_API_{upper}_MODEL_FAMILY", "auto").strip(),
+        generations_url=os.getenv(f"IMAGE_API_{upper}_GENERATIONS_URL") or None,
+        edits_url=os.getenv(f"IMAGE_API_{upper}_EDITS_URL") or None,
+        timeout=_env_float(f"IMAGE_API_{upper}_TIMEOUT", 180.0),
+        max_retries=_env_int(f"IMAGE_API_{upper}_MAX_RETRIES", 2),
+        verify_ssl=_env_bool(f"IMAGE_API_{upper}_VERIFY_SSL", True),
+        extra_headers=parse_extra_headers(os.getenv(f"IMAGE_API_{upper}_EXTRA_HEADERS")),
+    )
+
+
+@dataclass(slots=True)
 class APIConfig:
     api_key: str
     base_url: str = "https://api.openai.com/v1"
@@ -172,6 +304,7 @@ class APIConfig:
     max_retries: int = 3
     verify_ssl: bool = True
     extra_headers: dict[str, str] = field(default_factory=dict)
+    chain: ProviderChain | None = None
 
     @classmethod
     def from_env(
@@ -186,6 +319,22 @@ class APIConfig:
         max_retries: int | None = None,
     ) -> "APIConfig":
         _load_env_files()
+        chain = ProviderChain.from_env()
+        if chain is not None:
+            primary = chain.profiles[0]
+            return cls(
+                api_key=primary.api_key,
+                base_url=primary.base_url,
+                model=primary.model,
+                model_family=primary.model_family,
+                generations_url=primary.generations_url,
+                edits_url=primary.edits_url,
+                timeout=primary.timeout,
+                max_retries=primary.max_retries,
+                verify_ssl=primary.verify_ssl,
+                extra_headers=dict(primary.extra_headers),
+                chain=chain,
+            )
         api_key = os.getenv("IMAGE_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
         resolved_model = (model or os.getenv("IMAGE_API_MODEL") or "gpt-image-2").strip()
         return cls(
@@ -216,6 +365,29 @@ class APIConfig:
     @property
     def is_gpt_image_2(self) -> bool:
         return self.resolved_model_family == "gpt-image-2"
+
+    @property
+    def primary_profile(self) -> ProviderProfile:
+        """Return the active primary provider as a ProviderProfile.
+
+        Single-provider mode (legacy) constructs an ad-hoc profile so callers
+        can treat both modes uniformly.
+        """
+        if self.chain is not None:
+            return self.chain.profiles[0]
+        return ProviderProfile(
+            name="default",
+            api_key=self.api_key,
+            base_url=self.base_url,
+            model=self.model,
+            model_family=self.model_family,
+            generations_url=self.generations_url,
+            edits_url=self.edits_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+            verify_ssl=self.verify_ssl,
+            extra_headers=dict(self.extra_headers),
+        )
 
     def validate(self, require_key: bool = True) -> list[str]:
         warnings: list[str] = []
@@ -255,7 +427,7 @@ class APIConfig:
         return build_endpoint(self.base_url, "edit", self.edits_url)
 
     def safe_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "api_key_configured": bool(self.api_key),
             "base_url": self.base_url,
             "model": self.model,
@@ -267,3 +439,6 @@ class APIConfig:
             "verify_ssl": self.verify_ssl,
             "extra_header_names": sorted(self.extra_headers),
         }
+        if self.chain is not None:
+            out["chain"] = self.chain.safe_dict()
+        return out
