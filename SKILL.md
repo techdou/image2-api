@@ -101,6 +101,8 @@ Read `references/prompt-brief-schema.md` when constructing JSON briefs. The mach
 
 ## Generate
 
+**Size capability is per-provider, not universal.** Before requesting a non-square size (横版/竖版/16:9/3:2 etc.), confirm the current primary provider supports it. `fushengyunsuan` supports the widest size range; `imagepro` only supports square. See `references/api-compatibility.md` "Per-provider size capability" for the tested matrix and provider-picking strategy.
+
 ```bash
 python scripts/generate_image.py \
   --prompt-file prompt.txt \

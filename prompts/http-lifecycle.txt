@@ -1,0 +1,50 @@
+An educational infographic poster explaining "The HTTP Request Lifecycle", intended for a second-year computer science student. Horizontal 3:2 layout, single page.
+
+EXACT IN-IMAGE TEXT (render verbatim, no paraphrase, no extra text anywhere on the page):
+
+- Title (top, largest size, bold): HTTP Request Lifecycle
+- Subtitle (directly below title, smaller, regular weight): From URL to rendered page in 7 steps
+
+- Step labels, each with a circled numeral and a short caption:
+  1. User enters URL
+  2. DNS lookup
+  3. TCP handshake (SYN, SYN-ACK, ACK)
+  4. TLS handshake
+  5. HTTP request sent
+  6. Server processes & responds
+  7. Browser renders
+
+- A small caption under step 2: "Domain → IP address"
+- A small caption under step 5: "GET / HTTP/1.1"
+- A small caption under step 6: "200 OK"
+
+- Footer (small, bottom-left): CS 101 · Network Fundamentals
+- Footer (small, bottom-right): Figure 1
+
+VISUAL STRUCTURE:
+
+- Seven numbered cards arranged in a horizontal flowing sequence connected by right-pointing arrows, wrapping from a top row of four (steps 1-4) to a bottom row of three (steps 5-7). Arrows between cards; the transition arrow from card 4 to card 5 curves down and to the left.
+- Each card contains: the circled numeral on the top-left, the step label as the card title, and the small caption as supporting text.
+- Card 3 also shows a tiny three-packet diagram (SYN, SYN-ACK, ACK) as small labeled packets stacked vertically on the right side of the card.
+- Card 5 shows a small monospace-style code block with the exact text "GET / HTTP/1.1".
+- Card 6 shows a small server icon (a rectangular rack shape) emitting a return arrow labeled "200 OK" pointing back toward card 7.
+
+TYPOGRAPHY:
+
+- Use a clean geometric sans-serif throughout (similar in spirit to Inter, Manrope, or SF Pro). Title bold; step labels semibold; captions regular.
+- Consistent type hierarchy: title ≈ 56 pt, subtitle ≈ 22 pt, step labels ≈ 18 pt, captions ≈ 13 pt, footer ≈ 11 pt.
+- All text must be crisp, well-kerned, correctly spelled, and fully legible at full resolution. No letter substitutions, no garbled glyphs, no invented characters.
+
+COLOR AND TREATMENT:
+
+- Restrained editorial palette: off-white background (#F7F6F3), deep slate text (#1F2937), muted teal accent for numerals and arrows (#0F766E), soft warm gray card fills (#EEEDEA) with a 1 px slate border.
+- One accent color only. No gradients, no neon, no rainbow.
+- Flat 2D illustration style. No photorealism, no 3D render, no shadows beyond a single subtle card edge.
+- Minimal decoration; white space is part of the design.
+
+CONSTRAINTS:
+
+- Render every exact string above exactly once and no others. Do not add decorative labels, watermark-like text, or extra explanatory paragraphs.
+- Keep the seven-step horizontal-then-wrap layout; do not collapse into a single vertical list.
+- No emoji, no logos, no photographic imagery.
+- Output a complete, single-page poster with clear margins on all sides.

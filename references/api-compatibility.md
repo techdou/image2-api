@@ -54,6 +54,35 @@ The local validator applies these current model rules:
 
 Third-party relays may cap resolution or remap sizes. GPT Image 2 natively supports up to 4K (3840px longest edge); verify a relay passes through your requested size by checking actual output dimensions in `metadata.json`.
 
+## Per-provider size capability (实测 2026-07)
+
+Different providers in the chain support different size sets. **Pick a provider that supports the requested size before calling, not after a 400.**
+
+| Provider | model alias | 全 size 支持 | 实测通过 |
+|---|---|---|---|
+| **fushengyunsuan** | gpt-image-2 | ✅ 是 | 1024x1024, 1536x1024, 1024x1536, 1792x1024, 1024x1792, 2048x2048, 2048x1152 |
+| **agnes** | agnes-image-2.1-flash | ⚠️ 部分 | 1024x1024 OK；其他 size 偶发 503（上游繁忙，不代表不支持），需重试或换 provider |
+| **imagepro** | image-pro | ❌ 仅正方形 | 1024x1024, 2048x2048 OK；1536x1024, 1024x1536 报 400 |
+| cunai | gpt-image-2 | 未测 | 用前 curl 探活 |
+| jbbtoken / jbbtoken_vip / luminai | gpt-image-2 / vip-image | 未测 | 用前 curl 探活 |
+
+### 用 size 选 provider 的策略
+
+1. **需要横版/竖版/特殊比例（公众号横版、小红书竖版、3:2、16:9）**：优先用 `fushengyunsuan`（实测 7 种 size 全过）。
+2. **agnes 上游频繁 503**：不要依赖 agnes 做主力 size 任务，可作 fallback。
+3. **imagepro 只能正方形**：横/竖版请求会被拒（400），fallback_status 不会触发（400 不在 fallback 列表），所以请求会直接失败。如果要用非正方形 size，**不要把 imagepro 排在主位**。
+4. **未知 provider 的 size 能力**：先 curl 探活再正式调用：
+   ```bash
+   curl -X POST "$URL" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+     -d '{"model":"<alias>","prompt":"test","size":"<W>x<H>","quality":"low","n":1}'
+   ```
+   HTTP 200 = 支持；HTTP 400 = 不支持该 size；HTTP 503/504 = 上游繁忙，重试或换 provider。
+5. **provider 排序建议**（按 size 能力）：
+   ```dotenv
+   IMAGE_API_PROVIDERS=fushengyunsuan,cunai,imagepro,jbbtoken_vip,agnes,luminai,jbbtoken
+   ```
+   `fushengyunsuan` 主力（size 全 + 稳定），`imagepro` 作 fallback（正方形场景）。如果常用非正方形 size，考虑把 `imagepro` 后移或移除。
+
 ## Edit inputs and masks
 
 - A request accepts 1–16 source/reference images.

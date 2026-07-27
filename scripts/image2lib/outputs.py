@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -49,8 +50,18 @@ class RunOutput:
         (self.path / "prompt.txt").write_text(prompt.rstrip() + "\n", encoding="utf-8")
 
     def image_path(self, index: int, output_format: str, total: int = 1) -> Path:
+        """Build the output path for the image at position ``index`` (1-based).
+
+        ``total`` is the user's requested count. Some relays return MORE
+        candidates than requested (e.g. fushengyunsuan returns 3 candidates
+        for count=1 because gpt-image-2-codex runs multiple passes). When
+        that happens, ``index`` will exceed ``total``. We must still produce
+        a unique filename for each candidate so they don't overwrite each
+        other. The rule: if ``index > total`` we treat it as an "extra"
+        candidate and always include the index in the filename.
+        """
         ext = extension_for_format(output_format)
-        if total <= 1:
+        if total <= 1 and index <= 1:
             return self.path / f"{self.prefix}{ext}"
         return self.path / f"{self.prefix}_{index:02d}{ext}"
 
@@ -65,6 +76,40 @@ class RunOutput:
 
     def write_metadata(self, metadata: dict[str, Any]) -> None:
         write_json(self.path / "metadata.json", metadata)
+
+    def cleanup_intermediates(self) -> list[str]:
+        """Remove non-image intermediate files from this run directory.
+
+        Triggered by env var IMAGE_API_CLEAN_INTERMEDIATES=1/true/yes/on.
+        Deletes prompt.txt, request.json, prompt_review.json,
+        response_summary.json, metadata.json — anything that is not a
+        recognized image format. Keeps .jpg/.png/.webp/.jpeg/.gif/.bmp.
+
+        Safe to call after a failed run too: just no-ops on missing files.
+        Returns the list of removed filenames for logging.
+        """
+        if not _clean_intermediates_enabled():
+            return []
+        image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+        removed: list[str] = []
+        for child in self.path.iterdir():
+            if not child.is_file():
+                continue
+            if child.suffix.lower() in image_extensions:
+                continue
+            try:
+                child.unlink()
+                removed.append(child.name)
+            except OSError:
+                # Best-effort cleanup; don't fail the task over it.
+                pass
+        return removed
+
+
+def _clean_intermediates_enabled() -> bool:
+    """Read IMAGE_API_CLEAN_INTERMEDIATES env var as a boolean."""
+    raw = os.getenv("IMAGE_API_CLEAN_INTERMEDIATES", "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def media_type_for(path: Path) -> str:

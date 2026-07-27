@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -54,16 +55,42 @@ def _resolve_skill_root() -> Path:
 
 
 def _load_env_files() -> None:
+    """Load .env files to populate missing IMAGE_API_* variables.
+
+    Robustness rules:
+    1. If dotenv is not installed, raise a clear error instead of silently
+       skipping — otherwise callers see "key not found" with no clue why.
+    2. Use override=False so user-exported shell vars win, BUT treat
+       empty-string exports as "unset" so a stray `export IMAGE_API_KEY=`
+       doesn't shadow the real value from .env.
+    3. Always load the skill-root .env; cwd/.env is an optional add-on.
+    """
     if load_dotenv is None:
-        return
+        raise RuntimeError(
+            "python-dotenv is not installed in the current Python interpreter "
+            f"({sys.executable}). The image2-api skill needs it to load .env. "
+            "Fix: pip install python-dotenv  (or run: python scripts/doctor.py)"
+        )
     skill_root = _resolve_skill_root()
-    candidates = [Path.cwd() / ".env", skill_root / ".env"]
+    candidates = [skill_root / ".env", Path.cwd() / ".env"]
     seen: set[Path] = set()
     for path in candidates:
-        path = path.resolve()
+        try:
+            path = path.resolve()
+        except OSError:
+            continue
         if path not in seen and path.is_file():
             load_dotenv(path, override=False)
             seen.add(path)
+
+    # Defense against stray empty-string exports: if any IMAGE_API_*_KEY is
+    # set in the environment but empty, treat it as unset so the .env value
+    # (which load_dotenv did NOT override) is what os.getenv sees.
+    # This is the most common silent cause of "key not found" in new sessions.
+    for env_name in list(os.environ):
+        if env_name.startswith("IMAGE_API_") and env_name.endswith("_KEY"):
+            if not os.environ[env_name].strip():
+                del os.environ[env_name]
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -274,9 +301,20 @@ def _profile_from_env(name: str) -> ProviderProfile:
     if not base_url_raw:
         raise ValueError(
             f"Provider {name!r} is listed in IMAGE_API_PROVIDERS but "
-            f"IMAGE_API_{upper}_BASE_URL is not set."
+            f"IMAGE_API_{upper}_BASE_URL is not set. "
+            f"Likely cause: .env was not loaded. Check:\n"
+            f"  1. python-dotenv installed: pip install python-dotenv\n"
+            f"  2. .env exists at skill root: {_resolve_skill_root() / '.env'}\n"
+            f"  3. field name exact match: IMAGE_API_{upper}_BASE_URL"
         )
     api_key = os.getenv(f"IMAGE_API_{upper}_KEY", "").strip()
+    if not api_key:
+        raise ValueError(
+            f"Provider {name!r} has IMAGE_API_{upper}_BASE_URL set but "
+            f"IMAGE_API_{upper}_KEY is empty or missing. "
+            f"Likely cause: .env not loaded, or key field misnamed. "
+            f"Run: python scripts/doctor.py"
+        )
     return ProviderProfile(
         name=name,
         api_key=api_key,

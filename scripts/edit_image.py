@@ -199,6 +199,9 @@ def main() -> int:
                 "warnings": warnings,
             }
         )
+        removed = run.cleanup_intermediates()
+        if removed and not args.json:
+            print(f"Cleaned intermediate files: {', '.join(removed)}", file=sys.stderr)
         result = {"ok": True, "run_dir": str(run.path), "images": saved_paths, "warnings": warnings}
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -1,6 +1,6 @@
-# image2-api
+# image2-api | 图片生成 API Skill
 
-> English below · [中文导读](#中文导读)
+[English](#english) | [中文](#中文导读)
 
 `image2-api` is an Agent Skill for generating and editing images through an OpenAI-compatible Images API or third-party GPT Image 2 relay. Version 1.2 adds a strict Agent Skills activation boundary, relay-alias model-family handling, package validation, trigger-evaluation fixtures, and several API-safety corrections.
 
