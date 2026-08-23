@@ -715,10 +715,12 @@ def lint_prompt(
     if is_image2 and (background == "transparent" or "transparent background" in lower):
         issues.append(
             PromptIssue(
-                "transparent-unsupported",
-                "error",
-                "Official gpt-image-2 does not support transparent output backgrounds.",
-                "Generate on an opaque/plain background and remove it downstream when transparency is required.",
+                "transparent-background-verify",
+                "warning",
+                "Transparent backgrounds are officially supported by gpt-image-2 (preview, png/webp only), "
+                "but support depends on the relay actually passing the parameter through.",
+                "Use a provider verified for transparency and check the saved file has an alpha channel "
+                "with transparent pixels; some relays accept the flag but silently return an opaque image.",
             )
         )
 

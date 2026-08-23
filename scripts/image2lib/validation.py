@@ -168,8 +168,16 @@ def validate_generation_options(
         model_family == "auto"
         and (normalized_model == "gpt-image-2" or normalized_model.startswith("gpt-image-2-"))
     )
-    if is_image2 and background == "transparent":
-        raise ValueError("Official gpt-image-2 does not support transparent backgrounds.")
+    if background == "transparent":
+        if output_format == "jpeg":
+            raise ValueError(
+                "background=transparent requires png or webp output; jpeg has no alpha channel."
+            )
+        warnings.append(
+            "background=transparent depends on provider support: some relays accept the flag "
+            "but silently return an opaque image. Verify the saved file has an alpha channel "
+            "with transparent pixels before using it."
+        )
 
     if size != "auto":
         match = re.fullmatch(r"(\d+)x(\d+)", size)

@@ -45,7 +45,7 @@ The local validator applies these current model rules:
 
 - quality: `low`, `medium`, `high`, or `auto`;
 - output format: PNG, JPEG, or WebP;
-- background: `auto` or `opaque`; official GPT Image 2 does not support transparent output;
+- background: `auto`, `opaque`, or `transparent` — transparent is officially supported by GPT Image 2 (preview, announced 2026-08): the model generates a real alpha channel directly. PNG or WebP output only; JPEG is rejected locally. Relay passthrough varies — see the transparency matrix below;
 - output compression: 0–100, only for JPEG or WebP;
 - output count: 1–10 per CLI run;
 - custom dimensions: GPT Image 2 accepts any resolution satisfying these constraints (per OpenAI image-generation guide): each edge ≤ 3840 px; both edges multiples of 16; total pixels 655,360–8,294,400; long-to-short edge ratio ≤ 3:1; 1K/2K/4K tiers map roughly to longest edge ~1024 / ~2048 / ~3840; common sizes include 1024×1024, 1536×1024, 1024×1536, 2048×2048, 2048×1152, 3840×2160, 2160×3840; aspect ratios are flexible (1:1, 2:3, 3:2, 16:9, 9:16, etc.);
@@ -82,6 +82,30 @@ Different providers in the chain support different size sets. **Pick a provider 
    IMAGE_API_PROVIDERS=fushengyunsuan,cunai,imagepro,jbbtoken_vip,agnes,luminai,jbbtoken
    ```
    `fushengyunsuan` 主力（size 全 + 稳定），`imagepro` 作 fallback（正方形场景）。如果常用非正方形 size，考虑把 `imagepro` 后移或移除。
+
+## Per-provider transparency capability (实测 2026-08)
+
+`background=transparent` 是 gpt-image-2 官方原生能力（preview，官方 2026-08 公告：模型直接输出带 alpha 通道的 PNG/WebP，无需事后抠图）。但各中转透传情况不一，**必须实测**：
+
+| Provider | transparent 实测 | 结果 |
+|---|---|---|
+| **fushengyunsuan** | ✅ 可用（有前提） | prompt 显式写 `transparent background` 时 3/3 返回 RGBA（背景 alpha=0、边缘自然羽化）；prompt 不写时 9/9 返回 RGB。`background=transparent` **参数字段未被可靠透传**，决定性通道是 prompt 文本 |
+| **imagepro** | ❌ 不支持 | prompt 含 transparent + 参数齐全仍返回 RGB 无 alpha，参数与 prompt 均被忽略 |
+| 其余 provider | 未测 | 用前按下述方法探活 |
+
+### 透明任务工作流
+
+1. **prompt 必须显式写明**，如 `... isolated object on transparent background, no shadow`——这是 fushengyunsuan 实测的决定性变量（单变量对照实验 2026-08-24：同 payload 同 UA，含词 RGBA、不含词 RGB）。同时带 `--background transparent`（对真透传 provider 生效，官方语义正确）。
+2. 生成命令带 `--output-format png`（JPEG 无 alpha 通道，本地校验已拦截该组合）。
+3. 验收必须查 alpha 通道，不能只看 HTTP 200（`imagepro` 会假装成功）：
+   ```python
+   from PIL import Image
+   img = Image.open("output.png")
+   assert img.mode == "RGBA", f"relay ignored transparent: mode={img.mode}"
+   lo, _ = img.getchannel("A").getextrema()
+   assert lo < 255, "no transparent pixels in output"
+   ```
+4. 透明输出失败时的排查顺序：先确认 prompt 含 `transparent background` → 换已验证 provider → 隔段时间重试（上游存在能力不一致的节点池，间歇性波动）。不要归因于 UA、`moderation` 等请求字段——已用对照实验排除（2026-08-24）。
 
 ## Edit inputs and masks
 

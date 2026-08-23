@@ -69,8 +69,9 @@ def _fields(
         "quality": args.quality,
         "background": args.background,
         "output_format": args.output_format,
-        "moderation": args.moderation,
     }
+    if args.moderation != "auto":
+        fields["moderation"] = args.moderation
     if args.output_compression is not None:
         fields["output_compression"] = args.output_compression
     fields = merge_extra_params(

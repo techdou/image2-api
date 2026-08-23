@@ -366,7 +366,9 @@ class FallbackEnvConfigTests(unittest.TestCase):
         env = {
             "IMAGE_API_PROVIDERS": "a,b",
             "IMAGE_API_A_BASE_URL": "https://a.example.com/v1",
+            "IMAGE_API_A_KEY": "sk-a",
             "IMAGE_API_B_BASE_URL": "https://b.example.com/v1",
+            "IMAGE_API_B_KEY": "sk-b",
             "IMAGE_API_FALLBACK_STATUS": "503,network_error",
         }
         with patch.dict("os.environ", env, clear=False):
@@ -378,7 +380,9 @@ class FallbackEnvConfigTests(unittest.TestCase):
         env = {
             "IMAGE_API_PROVIDERS": "a,b",
             "IMAGE_API_A_BASE_URL": "https://a.example.com/v1",
+            "IMAGE_API_A_KEY": "sk-a",
             "IMAGE_API_B_BASE_URL": "https://b.example.com/v1",
+            "IMAGE_API_B_KEY": "sk-b",
             "IMAGE_API_FALLBACK_STATUS": "not-a-code",
         }
         with patch.dict("os.environ", env, clear=False):

@@ -17,7 +17,7 @@
 
 - Retry with a standard size like `1024x1024`, `1536x1024`, or `1024x1536` to test whether the relay rejects large or custom dimensions. GPT Image 2 supports up to 3840×3840 natively, but some relays cap resolution or remap sizes — check actual output in `metadata.json`.
 - Remove relay-unsupported fields.
-- Use `background=auto` rather than transparent for `gpt-image-2`.
+- For transparent output: confirm the prompt explicitly says "transparent background" (decisive on `fushengyunsuan`; the request field alone is not enough), then check the output alpha channel. `imagepro` ignores transparency entirely — switch provider rather than dropping the requirement. Do not blame UA or `moderation` fields; ruled out by controlled probes (2026-08).
 - Do not send `input_fidelity` for GPT Image 2.
 - Use sequential mode instead of `n > 1`.
 - For edits, verify the relay implements multipart `/images/edits`.
@@ -52,7 +52,7 @@ Common fixes:
 - add `Preserve exactly` and `Change only` sections for edits;
 - identify each reference image by index and role;
 - specify columns, panels, arrow direction, or spatial placement for structured visuals;
-- remove requests for transparent GPT Image 2 output.
+- act on the transparency verification warning: confirm the provider passes `background=transparent` through and the output file has an alpha channel before shipping transparent assets.
 
 Strict mode is intentionally conservative. Use normal warning mode when a flagged choice is deliberate.
 

@@ -88,27 +88,43 @@ class ClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at most 16"):
             validate_input_images([f"missing-{index}.png" for index in range(17)])
 
-    def test_image2_transparent_rejected(self):
-        with self.assertRaises(ValueError):
+    def test_image2_transparent_accepted(self):
+        warnings = validate_generation_options(
+            model="gpt-image-2",
+            model_family="gpt-image-2",
+            size="1024x1024",
+            quality="high",
+            background="transparent",
+            output_format="png",
+            output_compression=None,
+            count=1,
+        )
+        self.assertTrue(
+            any("transparent" in warning for warning in warnings),
+            "transparent background should emit a provider-support verification warning",
+        )
+
+    def test_transparent_jpeg_rejected(self):
+        with self.assertRaisesRegex(ValueError, "alpha"):
             validate_generation_options(
                 model="gpt-image-2",
                 model_family="gpt-image-2",
                 size="1024x1024",
                 quality="high",
                 background="transparent",
-                output_format="png",
+                output_format="jpeg",
                 output_compression=None,
                 count=1,
             )
 
     def test_alias_uses_image2_constraints_when_family_is_set(self):
-        with self.assertRaisesRegex(ValueError, "transparent"):
+        with self.assertRaisesRegex(ValueError, "multiples of 16"):
             validate_generation_options(
                 model="image-2",
                 model_family="gpt-image-2",
-                size="1024x1024",
+                size="1000x1000",
                 quality="high",
-                background="transparent",
+                background="auto",
                 output_format="png",
                 output_compression=None,
                 count=1,

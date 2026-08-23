@@ -83,7 +83,7 @@ class CLITests(unittest.TestCase):
         self.assertEqual(payload["review"]["profile"], "project-hero")
         self.assertIn("Scene and background:", payload["prompt"])
 
-    def test_alias_family_rejects_transparent_background(self):
+    def test_alias_family_accepts_transparent_background(self):
         proc = subprocess.run(
             [
                 sys.executable,
@@ -103,9 +103,9 @@ class CLITests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertEqual(proc.returncode, 1)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
-        self.assertIn("transparent", payload["error"])
+        self.assertTrue(payload["ok"])
 
     def test_extra_param_cannot_override_prompt(self):
         proc = subprocess.run(

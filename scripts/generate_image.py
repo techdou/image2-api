@@ -70,8 +70,9 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
         "quality": args.quality,
         "background": args.background,
         "output_format": args.output_format,
-        "moderation": args.moderation,
     }
+    if args.moderation != "auto":
+        payload["moderation"] = args.moderation
     if args.output_compression is not None:
         payload["output_compression"] = args.output_compression
     return merge_extra_params(

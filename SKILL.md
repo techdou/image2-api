@@ -3,7 +3,7 @@ name: image2-api
 description: This skill should be used when the user asks to generate, edit, localize, composite, or batch-create images through an OpenAI-compatible Images API or a third-party GPT Image 2 relay. Trigger on explicit mentions of gpt-image-2, an image model alias, custom base URL, /v1/images/generations, /v1/images/edits, API-based image generation, prompt compilation or review for an API call, reference images, masks, or reproducible image run metadata. Do not select it solely for ordinary built-in image generation when no API or relay workflow is requested.
 compatibility: Requires Python 3.10+, packages in requirements.txt, and network access for live API calls. Prompt compilation, linting, dry runs, validation, and tests work offline.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   format: "agentskills.io"
 ---
 
@@ -102,6 +102,8 @@ Read `references/prompt-brief-schema.md` when constructing JSON briefs. The mach
 ## Generate
 
 **Size capability is per-provider, not universal.** Before requesting a non-square size (横版/竖版/16:9/3:2 etc.), confirm the current primary provider supports it. `fushengyunsuan` supports the widest size range; `imagepro` only supports square. See `references/api-compatibility.md` "Per-provider size capability" for the tested matrix and provider-picking strategy.
+
+**Transparent backgrounds are natively supported** (official preview; the model outputs a real alpha channel — PNG/WebP only, JPEG is rejected locally). Two rules from live probes: the prompt must explicitly say "transparent background" (the decisive variable on `fushengyunsuan`; the request field alone is not reliably passed through), and you must verify the saved file has an alpha channel with transparent pixels (`imagepro` silently returns opaque images). See `references/api-compatibility.md` "Per-provider transparency capability".
 
 ```bash
 python scripts/generate_image.py \
