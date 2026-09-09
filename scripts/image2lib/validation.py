@@ -7,11 +7,12 @@ from typing import Any, Iterable
 
 from PIL import Image, UnidentifiedImageError
 
+from .capabilities import model_capabilities
 from .utils import sha256_bytes
 
 MAX_INPUT_IMAGES = 16
 MAX_INPUT_IMAGE_BYTES = 50 * 1024 * 1024
-MAX_MASK_BYTES = 4 * 1024 * 1024
+MAX_MASK_BYTES = 50 * 1024 * 1024
 
 
 @dataclass(slots=True)
@@ -93,21 +94,20 @@ def validate_input_image(path: str | Path, *, is_mask: bool = False) -> tuple[in
         path,
         max_bytes=MAX_MASK_BYTES if is_mask else MAX_INPUT_IMAGE_BYTES,
     )
+    if fmt not in {"PNG", "JPEG", "WEBP"}:
+        role = "mask" if is_mask else "input image"
+        raise ValueError(
+            f"Unsupported {role} format {fmt or 'unknown'}. Use PNG, JPEG/JPG, or WebP."
+        )
     if is_mask:
-        if fmt != "PNG":
-            raise ValueError("The edit mask must be a PNG file.")
         if not has_alpha:
             raise ValueError(
-                "The mask PNG has no alpha channel. Transparent areas indicate the edit region."
+                "The edit mask must contain an alpha channel. Transparent areas indicate the edit region."
             )
         if alpha_extrema and alpha_extrema[0] == 255:
             raise ValueError(
                 "The mask is fully opaque and contains no transparent edit region."
             )
-    elif fmt not in {"PNG", "JPEG", "WEBP"}:
-        raise ValueError(
-            f"Unsupported input image format {fmt or 'unknown'}. Use PNG, JPEG/JPG, or WebP."
-        )
     return size
 
 
@@ -123,10 +123,23 @@ def validate_input_images(paths: Iterable[str | Path]) -> list[Path]:
 
 
 def validate_mask_compatibility(image_path: str | Path, mask_path: str | Path) -> None:
-    image_size, _, _, _ = _inspect_input_image(image_path)
-    mask_size, mask_format, _, _ = _inspect_input_image(mask_path, max_bytes=MAX_MASK_BYTES)
-    if mask_format != "PNG":
-        raise ValueError("The edit mask must be a PNG file.")
+    image_size, image_format, _, _ = _inspect_input_image(image_path)
+    mask_size, mask_format, has_alpha, alpha_extrema = _inspect_input_image(
+        mask_path, max_bytes=MAX_MASK_BYTES
+    )
+    if mask_format not in {"PNG", "JPEG", "WEBP"}:
+        raise ValueError("The edit mask must be PNG, JPEG/JPG, or WebP.")
+    if mask_format != image_format:
+        raise ValueError(
+            f"Mask format {mask_format} must match the first image format {image_format}. "
+            "For masked edits, use an alpha-capable format such as PNG or WebP for both files."
+        )
+    if not has_alpha:
+        raise ValueError(
+            "The edit mask must contain an alpha channel. Use PNG or WebP when creating a mask."
+        )
+    if alpha_extrema and alpha_extrema[0] == 255:
+        raise ValueError("The mask is fully opaque and contains no transparent edit region.")
     if mask_size != image_size:
         raise ValueError(
             f"Mask dimensions {mask_size[0]}x{mask_size[1]} must match the first image "
@@ -148,8 +161,13 @@ def validate_generation_options(
     import re
 
     warnings: list[str] = []
-    if quality not in {"low", "medium", "high", "auto"}:
-        raise ValueError("quality must be low, medium, high, or auto.")
+    caps = model_capabilities(model, model_family)
+
+    if quality not in caps.qualities:
+        allowed = ", ".join(sorted(caps.qualities))
+        raise ValueError(
+            f"quality {quality!r} is not supported for {caps.family}; choose from: {allowed}."
+        )
     if background not in {"transparent", "opaque", "auto"}:
         raise ValueError("background must be transparent, opaque, or auto.")
     output_format = output_format.lower()
@@ -163,21 +181,16 @@ def validate_generation_options(
         if not 0 <= output_compression <= 100:
             raise ValueError("output_compression must be between 0 and 100.")
 
-    normalized_model = model.strip().lower()
-    is_image2 = model_family == "gpt-image-2" or (
-        model_family == "auto"
-        and (normalized_model == "gpt-image-2" or normalized_model.startswith("gpt-image-2-"))
-    )
     if background == "transparent":
-        if output_format == "jpeg":
-            raise ValueError(
-                "background=transparent requires png or webp output; jpeg has no alpha channel."
+        if not caps.transparent_background:
+            raise ValueError(f"{caps.family} does not support transparent backgrounds.")
+        if output_format not in {"png", "webp"}:
+            raise ValueError("transparent backgrounds require output_format png or webp.")
+        if caps.transparent_preview:
+            warnings.append(
+                "Transparent backgrounds are currently a preview capability for gpt-image-2; "
+                "verify the returned alpha channel before production use."
             )
-        warnings.append(
-            "background=transparent depends on provider support: some relays accept the flag "
-            "but silently return an opaque image. Verify the saved file has an alpha channel "
-            "with transparent pixels before using it."
-        )
 
     if size != "auto":
         match = re.fullmatch(r"(\d+)x(\d+)", size)
@@ -186,22 +199,36 @@ def validate_generation_options(
         width, height = map(int, match.groups())
         if width <= 0 or height <= 0:
             raise ValueError("size edges must be positive integers.")
-        if is_image2:
+        if caps.flexible_size:
             if width > 3840 or height > 3840:
                 raise ValueError(
-                    "For gpt-image-2, each edge must not exceed 3840 pixels (4K tier)."
+                    f"For {caps.family}, each edge must not exceed 3840 pixels."
                 )
             if width % 16 or height % 16:
-                raise ValueError("For gpt-image-2, both edges must be multiples of 16.")
+                raise ValueError(f"For {caps.family}, both edges must be multiples of 16.")
             pixels = width * height
             if not 655_360 <= pixels <= 8_294_400:
                 raise ValueError(
-                    "For gpt-image-2, total pixels must be between 655,360 and 8,294,400."
+                    f"For {caps.family}, total pixels must be between 655,360 and 8,294,400."
                 )
             if max(width, height) / min(width, height) > 3:
-                raise ValueError("For gpt-image-2, the long-to-short edge ratio cannot exceed 3:1.")
+                raise ValueError(
+                    f"For {caps.family}, the long-to-short edge ratio cannot exceed 3:1."
+                )
+            if caps.experimental_over_pixels and pixels > caps.experimental_over_pixels:
+                warnings.append(
+                    f"{width}x{height} exceeds 3,686,400 pixels (2560x1440); "
+                    f"this resolution tier is experimental for {caps.family}."
+                )
         elif size not in {"1024x1024", "1536x1024", "1024x1536"}:
             warnings.append(
-                "The selected model family is not GPT Image 2; this relay may only accept standard sizes."
+                f"The selected {caps.family} family is not validated for arbitrary sizes; "
+                "this relay may only accept standard GPT Image sizes."
             )
+
+    if caps.family == "generic" and quality in {"xhigh", "max"}:
+        warnings.append(
+            f"quality={quality} is being passed through to an unrecognized relay model; "
+            "set IMAGE_API_MODEL_FAMILY=gpt-image-2.5 when the alias maps to GPT Image 2.5."
+        )
     return warnings

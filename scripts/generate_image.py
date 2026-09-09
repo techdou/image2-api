@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from image2lib.client import ImageAPIClient, ImageAPIError, entry_to_bytes, extract_image_entries
+from image2lib.capabilities import QUALITY_CHOICES
 from image2lib.config import APIConfig, MODEL_FAMILIES
 from image2lib.outputs import RunOutput, extension_for_format
 from image2lib.prompting import PROFILES, lint_prompt, read_prompt
@@ -30,8 +31,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--prompt-lint", default="warn", choices=["off", "warn", "strict"], help="Review prompt quality before the API call.")
     p.add_argument("--base-url", help="API base URL override, normally ending in /v1.")
     p.add_argument("--endpoint", help="Full generation endpoint override.")
-    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2: edges <=3840px, multiples of 16, ratio <=3:1. 4K landscape: 3840x2160, 4K portrait: 2160x3840.")
-    p.add_argument("--quality", default="high", choices=["low", "medium", "high", "auto"])
+    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2/2.5: edges <=3840px, multiples of 16, ratio <=3:1. 4K landscape: 3840x2160, 4K portrait: 2160x3840.")
+    p.add_argument("--quality", default="high", choices=QUALITY_CHOICES)
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
     p.add_argument("--output-format", default="png", choices=["png", "jpeg", "webp"])
     p.add_argument("--output-compression", type=int)
@@ -70,9 +71,8 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
         "quality": args.quality,
         "background": args.background,
         "output_format": args.output_format,
+        "moderation": args.moderation,
     }
-    if args.moderation != "auto":
-        payload["moderation"] = args.moderation
     if args.output_compression is not None:
         payload["output_compression"] = args.output_compression
     return merge_extra_params(

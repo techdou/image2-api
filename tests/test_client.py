@@ -50,13 +50,24 @@ class ClientTests(unittest.TestCase):
             validate_input_image(mask, is_mask=True)
             validate_mask_compatibility(source, mask)
 
-    def test_jpeg_source_with_png_mask_is_valid(self):
+    def test_mask_format_must_match_source(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "source.jpg"
             mask = root / "mask.png"
             Image.new("RGB", (128, 128), (255, 255, 255)).save(source, format="JPEG")
             Image.new("RGBA", (128, 128), (0, 0, 0, 0)).save(mask)
+            validate_input_image(mask, is_mask=True)
+            with self.assertRaisesRegex(ValueError, "must match"): 
+                validate_mask_compatibility(source, mask)
+
+    def test_webp_mask_pair_is_valid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.webp"
+            mask = root / "mask.webp"
+            Image.new("RGBA", (128, 128), (255, 255, 255, 255)).save(source, format="WEBP")
+            Image.new("RGBA", (128, 128), (0, 0, 0, 0)).save(mask, format="WEBP", lossless=True)
             validate_input_image(mask, is_mask=True)
             validate_mask_compatibility(source, mask)
 
@@ -67,19 +78,20 @@ class ClientTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_input_image(mask, is_mask=True)
 
-    def test_mask_over_four_megabytes_rejected_before_decode(self):
+    def test_mask_at_fifty_megabytes_rejected_before_decode(self):
         with tempfile.TemporaryDirectory() as tmp:
             mask = Path(tmp) / "mask.png"
-            mask.write_bytes(b"x" * MAX_MASK_BYTES)
-            with self.assertRaisesRegex(ValueError, "smaller than 4 MB"):
+            with mask.open("wb") as handle:
+                handle.truncate(MAX_MASK_BYTES)
+            with self.assertRaisesRegex(ValueError, "smaller than 50 MB"):
                 validate_input_image(mask, is_mask=True)
 
     def test_mask_dimension_mismatch_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "source.jpg"
+            source = root / "source.png"
             mask = root / "mask.png"
-            Image.new("RGB", (128, 128), (255, 255, 255)).save(source, format="JPEG")
+            Image.new("RGBA", (128, 128), (255, 255, 255, 255)).save(source, format="PNG")
             Image.new("RGBA", (64, 128), (0, 0, 0, 0)).save(mask)
             with self.assertRaisesRegex(ValueError, "must match"):
                 validate_mask_compatibility(source, mask)
@@ -88,7 +100,7 @@ class ClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at most 16"):
             validate_input_images([f"missing-{index}.png" for index in range(17)])
 
-    def test_image2_transparent_accepted(self):
+    def test_image2_transparent_png_allowed_with_preview_warning(self):
         warnings = validate_generation_options(
             model="gpt-image-2",
             model_family="gpt-image-2",
@@ -99,16 +111,13 @@ class ClientTests(unittest.TestCase):
             output_compression=None,
             count=1,
         )
-        self.assertTrue(
-            any("transparent" in warning for warning in warnings),
-            "transparent background should emit a provider-support verification warning",
-        )
+        self.assertTrue(any("preview" in warning for warning in warnings))
 
     def test_transparent_jpeg_rejected(self):
-        with self.assertRaisesRegex(ValueError, "alpha"):
+        with self.assertRaisesRegex(ValueError, "png or webp"):
             validate_generation_options(
-                model="gpt-image-2",
-                model_family="gpt-image-2",
+                model="gpt-image-2.5-flare",
+                model_family="auto",
                 size="1024x1024",
                 quality="high",
                 background="transparent",
@@ -117,13 +126,27 @@ class ClientTests(unittest.TestCase):
                 count=1,
             )
 
-    def test_alias_uses_image2_constraints_when_family_is_set(self):
-        with self.assertRaisesRegex(ValueError, "multiples of 16"):
+    def test_gpt_image_25_supports_xhigh_and_max(self):
+        for quality in ("xhigh", "max"):
+            warnings = validate_generation_options(
+                model="gpt-image-2.5-sunburst",
+                model_family="auto",
+                size="2048x1152",
+                quality=quality,
+                background="transparent",
+                output_format="webp",
+                output_compression=90,
+                count=1,
+            )
+            self.assertEqual(warnings, [])
+
+    def test_gpt_image_2_rejects_xhigh(self):
+        with self.assertRaisesRegex(ValueError, "not supported"):
             validate_generation_options(
-                model="image-2",
-                model_family="gpt-image-2",
-                size="1000x1000",
-                quality="high",
+                model="gpt-image-2",
+                model_family="auto",
+                size="1024x1024",
+                quality="xhigh",
                 background="auto",
                 output_format="png",
                 output_compression=None,
@@ -142,6 +165,19 @@ class ClientTests(unittest.TestCase):
             count=1,
         )
         self.assertEqual(warnings, [])
+
+    def test_image25_4k_size_warns_experimental(self):
+        warnings = validate_generation_options(
+            model="gpt-image-2.5-flare",
+            model_family="auto",
+            size="3840x2160",
+            quality="high",
+            background="auto",
+            output_format="png",
+            output_compression=None,
+            count=1,
+        )
+        self.assertTrue(any("experimental" in warning for warning in warnings))
 
     def test_extra_param_cannot_override_standard_field(self):
         with self.assertRaisesRegex(ValueError, "cannot override"):

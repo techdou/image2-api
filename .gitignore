@@ -119,3 +119,10 @@ logs/
 node_modules/
 .npm/
 .yarn/
+
+# ─── 内部开发状态文档 (不上传, 避免开发过程泄漏) ────────
+REVIEW.md
+UPGRADE_PLAN*.md
+*_PLAN_*.md
+NOTES*.md
+TODO*.md

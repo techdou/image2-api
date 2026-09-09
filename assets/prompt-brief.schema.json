@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://techdou.com/schemas/image2-prompt-brief.schema.json",
-  "title": "GPT Image 2 prompt brief",
+  "title": "GPT Image prompt brief",
   "type": "object",
   "minProperties": 1,
   "properties": {

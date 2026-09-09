@@ -1,9 +1,9 @@
 ---
 name: image2-api
-description: This skill should be used when the user asks to generate, edit, localize, composite, or batch-create images through an OpenAI-compatible Images API or a third-party GPT Image 2 relay. Trigger on explicit mentions of gpt-image-2, an image model alias, custom base URL, /v1/images/generations, /v1/images/edits, API-based image generation, prompt compilation or review for an API call, reference images, masks, or reproducible image run metadata. Do not select it solely for ordinary built-in image generation when no API or relay workflow is requested.
+description: This skill should be used when the user asks to generate, edit, localize, composite, or batch-create images through an OpenAI-compatible Images API or a third-party GPT Image relay. Trigger on explicit mentions of gpt-image-2.5, gpt-image-2, Flare, Sunburst, an image model alias, custom base URL, /v1/images/generations, /v1/images/edits, API-based image generation, prompt compilation or review for an API call, reference images, masks, or reproducible image run metadata. Do not select it solely for ordinary built-in image generation when no API or relay workflow is requested.
 compatibility: Requires Python 3.10+, packages in requirements.txt, and network access for live API calls. Prompt compilation, linting, dry runs, validation, and tests work offline.
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
   format: "agentskills.io"
 ---
 
@@ -15,7 +15,7 @@ Use this skill only for an explicit OpenAI-compatible Images API or third-party 
 
 | Request | Command |
 |---|---|
-| Compile structured requirements into a GPT Image 2 prompt | `python scripts/build_prompt.py` |
+| Compile structured requirements into a GPT Image prompt | `python scripts/build_prompt.py` |
 | Review an existing prompt without calling the API | `python scripts/prompt_doctor.py` |
 | Generate from text | `python scripts/generate_image.py` |
 | Edit, localize, composite, or use reference images/masks | `python scripts/edit_image.py` |
@@ -23,31 +23,38 @@ Use this skill only for an explicit OpenAI-compatible Images API or third-party 
 | Diagnose configuration or probe a relay | `python scripts/doctor.py` |
 | Validate this skill package | `python scripts/validate_skill.py` |
 
+## Choose the model
+
+For official GPT Image 2.5 workflows:
+
+- **Flare** — `gpt-image-2.5-flare`: choose when speed and iteration rate are the priority.
+- **Sunburst** — `gpt-image-2.5-sunburst`: choose when demanding final quality, editing precision, or subject preservation are the priority.
+
+For an existing GPT Image 2 workflow that already meets quality requirements, test Flare first and compare latency with the same prompt, references, dimensions, format, and explicit quality. When GPT Image 2 quality is insufficient, test Sunburst first. Do not silently override an explicitly requested model.
+
+Keep the default relay configuration backward compatible. A third-party alias should set `IMAGE_API_MODEL_FAMILY=gpt-image-2.5` or `gpt-image-2` explicitly so capability validation remains active.
+
 ## Configuration modes
 
 This skill supports two configuration modes. Pick one.
 
-- **Single-provider (default).** Set `IMAGE_API_KEY`, `IMAGE_API_BASE_URL`,
-  `IMAGE_API_MODEL`, `IMAGE_API_MODEL_FAMILY`. Use for one upstream relay
-  or direct OpenAI access.
-- **Multi-provider with automatic fallback.** Set `IMAGE_API_PROVIDERS=fenno,backup`
-  plus an `IMAGE_API_<NAME>_*` block per provider. The skill tries providers
-  in order; a 429/5xx or network failure moves to the next provider.
-  See `references/api-compatibility.md` for the full schema.
+- **Single-provider (default).** Set `IMAGE_API_KEY`, `IMAGE_API_BASE_URL`, `IMAGE_API_MODEL`, `IMAGE_API_MODEL_FAMILY`.
+- **Multi-provider with automatic fallback.** Set `IMAGE_API_PROVIDERS=fenno,backup` plus an `IMAGE_API_<NAME>_*` block per provider. The skill tries providers in order; a configured 429/5xx or network failure moves to the next provider.
 
-Read `references/agent-routing.md` when the activation boundary is unclear. Read only the task-specific reference files needed for the current request.
+See `references/api-compatibility.md` for the full schema. Read `references/agent-routing.md` when the activation boundary is unclear.
 
 ## Execute the workflow
 
 1. **Resolve the skill root.** Run scripts from this directory or invoke them by absolute path. Store user assets outside the installed skill directory.
-2. **Classify the operation.** Choose `generate` or `edit`, then select the closest prompt profile.
-3. **Inspect inputs before execution.** Confirm reference-image order, mask presence, exact text, required identity/brand invariants, output purpose, and relay model alias. Ask only when a missing fact would materially alter identity, literal copy, brand compliance, or the requested edit boundary.
-4. **Compile or write the prompt.** Prefer a structured brief for complex assets. Use concrete visual decisions rather than legacy quality keywords.
-5. **Review locally.** Run `prompt_doctor.py` or retain the generation/edit command's default `--prompt-lint warn`. Use strict mode for production templates, exact text, diagrams, localization, and repeatable automation.
-6. **Validate the request with a dry run.** Confirm endpoint, resolved model family, dimensions, quality, background, count, image roles, mask, and sanitized request metadata.
-7. **Execute the API call.** Start with low or medium quality for exploration; use high quality for dense text, final diagrams, close portraits, identity-sensitive edits, and final assets.
-8. **Inspect every output when vision is available.** Check prompt adherence, text accuracy, hierarchy, crop, geometry, visual artifacts, and reference preservation. Refine one concrete failure at a time.
-9. **Return artifacts and provenance.** Report image paths and the run directory containing `prompt.txt`, `prompt_review.json`, `request.json`, `response_summary.json`, and `metadata.json`.
+2. **Classify the operation.** Choose `generate`, `edit`, prompt-only, or diagnostic.
+3. **Resolve the model family.** Official Flare/Sunburst names map to `gpt-image-2.5`; aliases should declare their underlying family.
+4. **Inspect inputs.** Confirm reference-image order, mask presence, exact text, identity/brand invariants, output purpose, model alias, output format, and intended size.
+5. **Compile or write the prompt.** Prefer a structured visual brief for complex assets. Use concrete visual decisions rather than legacy quality keywords.
+6. **Review locally.** Run `prompt_doctor.py` or use the generation/edit command's default `--prompt-lint warn`. Use strict mode for production templates, exact text, diagrams, localization, and repeatable automation.
+7. **Dry-run the request.** Confirm endpoint, resolved model family, dimensions, quality, background, output format, count, image roles, mask, and sanitized metadata.
+8. **Execute the API call.** Start with low/medium for exploration. Raise quality only when a concrete requirement is unmet; GPT Image 2.5 additionally supports `xhigh` and `max`.
+9. **Inspect every output.** Check prompt adherence, text accuracy, hierarchy, crop, geometry, visual artifacts, reference preservation, and real alpha transparency when requested.
+10. **Return artifacts and provenance.** Report image paths and the run directory containing `prompt.txt`, `prompt_review.json`, `request.json`, `response_summary.json`, and `metadata.json`.
 
 ## Build prompts
 
@@ -56,7 +63,7 @@ For complex work, organize the prompt as a maintainable creative brief:
 1. deliverable and intended use;
 2. scene and background;
 3. subject and action;
-4. key visual details;
+4. key visible details;
 5. composition and viewpoint;
 6. visual treatment, lighting, and palette;
 7. exact in-image text and typography;
@@ -71,9 +78,9 @@ Change only the background to a warm ceramic-humanistic technology studio.
 Keep everything else unchanged. Add no extra text or logos.
 ```
 
-For literal text, quote the exact copy, specify placement and hierarchy, request it once verbatim, and prohibit extra text. For recurring identities, products, logos, or exact layouts, use approved reference images through edit mode rather than relying on prompt-only regeneration.
+For literal text, quote the exact copy, specify placement and hierarchy, request it once verbatim, and prohibit extra text. For recurring identities, products, logos, or exact layouts, use approved reference images through edit mode rather than prompt-only regeneration.
 
-Read `references/gpt-image-2-prompt-guide.md` for the complete prompting model and `references/prompt-recipes.md` for task recipes.
+Read `references/gpt-image-prompt-guide.md` for prompting/model-selection guidance and `references/prompt-recipes.md` for task recipes.
 
 ## Compile and review
 
@@ -91,8 +98,8 @@ python scripts/prompt_doctor.py \
   --prompt-file prompt.txt \
   --operation generate \
   --profile project-hero \
-  --model image-2 \
-  --model-family gpt-image-2 \
+  --model gpt-image-2.5-sunburst \
+  --model-family gpt-image-2.5 \
   --quality high \
   --strict
 ```
@@ -101,40 +108,40 @@ Read `references/prompt-brief-schema.md` when constructing JSON briefs. The mach
 
 ## Generate
 
-**Size capability is per-provider, not universal.** Before requesting a non-square size (横版/竖版/16:9/3:2 etc.), confirm the current primary provider supports it. `fushengyunsuan` supports the widest size range; `imagepro` only supports square. See `references/api-compatibility.md` "Per-provider size capability" for the tested matrix and provider-picking strategy.
-
-**Transparent backgrounds are natively supported** (official preview; the model outputs a real alpha channel — PNG/WebP only, JPEG is rejected locally). Two rules from live probes: the prompt must explicitly say "transparent background" (the decisive variable on `fushengyunsuan`; the request field alone is not reliably passed through), and you must verify the saved file has an alpha channel with transparent pixels (`imagepro` silently returns opaque images). See `references/api-compatibility.md` "Per-provider transparency capability".
+GPT Image 2 and 2.5 support flexible `WIDTHxHEIGHT` sizes when both edges are multiples of 16, each edge is at most 3840 px, the long:short ratio is at most 3:1, and total pixels are 655,360-8,294,400. Above 3,686,400 pixels (`2560x1440`) is an experimental resolution tier. Third-party relays may impose stricter limits.
 
 ```bash
 python scripts/generate_image.py \
   --prompt-file prompt.txt \
   --prompt-profile project-hero \
-  --model image-2 \
-  --model-family gpt-image-2 \
+  --model gpt-image-2.5-flare \
+  --model-family gpt-image-2.5 \
   --size 1536x1024 \
-  --quality medium \
+  --quality high \
   --count 4 \
   --batch-mode sequential \
-  --output-dir outputs/project-hero
+  --output-dir output/project-hero
 ```
 
-Use `--dry-run --json` before the live call when the relay, alias, endpoint, or extra parameters are new.
+For transparent assets, set `--background transparent` and use `--output-format png` or `webp`. GPT Image 2 transparency is a preview capability; GPT Image 2.5 supports transparent backgrounds directly.
+
+Use `--dry-run --json` before a live call when the relay, alias, endpoint, model family, or extra parameters are new.
 
 ## Edit
 
 ```bash
 python scripts/edit_image.py \
-  --image primary.jpg \
+  --image primary.png \
   --image identity-reference.png \
   --prompt-file edit-prompt.txt \
   --prompt-profile edit \
-  --model image-2 \
-  --model-family gpt-image-2 \
+  --model gpt-image-2.5-sunburst \
+  --model-family gpt-image-2.5 \
   --quality high \
-  --output-dir outputs/revision-01
+  --output-dir output/revision-01
 ```
 
-For a masked edit, add `--mask mask.png`. Treat the mask as model guidance, not a guaranteed pixel-perfect clipping boundary.
+For a masked edit, add `--mask mask.png`. The mask and first image must have the same format and dimensions, each must be below 50 MB, and the mask must contain an alpha channel with a transparent edit region. PNG or WebP are practical masked-edit formats because JPEG has no alpha channel. Treat the mask as model guidance, not a guaranteed pixel-perfect clipping boundary.
 
 ## Configure safely
 
@@ -147,7 +154,12 @@ IMAGE_API_MODEL=image-2
 IMAGE_API_MODEL_FAMILY=gpt-image-2
 ```
 
-Use `IMAGE_API_MODEL_FAMILY` whenever a third-party alias hides the underlying model. This keeps model-specific validation active.
+For a relay alias that maps to GPT Image 2.5:
+
+```dotenv
+IMAGE_API_MODEL=image-2.5-pro
+IMAGE_API_MODEL_FAMILY=gpt-image-2.5
+```
 
 Never place credentials in prompts, command arguments, source control, request metadata, or examples. Treat signed output URLs and custom authorization headers as secrets. Use `--extra-param` only for documented relay extensions; it cannot override validated standard request fields.
 
@@ -158,7 +170,7 @@ Read `references/api-compatibility.md` for request/response behavior and `refere
 A successful API task must produce or explicitly report:
 
 - the final prompt or compiled brief;
-- prompt-review status and any deliberately accepted warnings;
+- prompt-review status and deliberately accepted warnings;
 - generated or edited image files;
 - the run directory and sanitized metadata;
 - any relay capability limitation that prevented part of the request.

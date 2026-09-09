@@ -1,13 +1,25 @@
 # Changelog
 
-## 1.3.0 - 2026-08-24
+## 1.4.0 - 2026-09-09
 
-- Unlocked `background=transparent` for GPT Image 2: OpenAI officially supports transparent output in preview (model generates a real alpha channel; PNG/WebP only), superseding the earlier "not supported" rule.
-- Removed the hard validator rejection and downgraded the prompt-lint rule from `transparent-unsupported` (error) to `transparent-background-verify` (warning).
-- Added local rejection for `background=transparent` combined with JPEG output (no alpha channel possible).
-- Added a per-provider transparency matrix from live probes (2026-08): `fushengyunsuan` outputs real RGBA transparency when the prompt explicitly says "transparent background" (single-variable control: with the phrase 3/3 RGBA, without 9/9 RGB; the `background=transparent` field itself is not reliably passed through); `imagepro` ignores both the field and the prompt and returns opaque images.
-- Stopped sending `moderation=auto` by default (the field is only sent for an explicit `--moderation low`); omitting it is semantically identical per the OpenAI API and keeps relay requests minimal.
-- Updated `api-compatibility.md`, `gpt-image-2-prompt-guide.md`, `troubleshooting.md`, and `SKILL.md` with the transparency workflow and alpha-verification requirement.
+- Merged the GPT Image 2.5 upgrade package (shipped externally as its own "1.3.0" dated 2026-09-09, see entry below) with the same-day local maintenance work; unified to 1.4.0 to avoid clashing 1.3.x numbers.
+- Preserved from local maintenance: provider chain pruned 7 -> 3 (`fushengyunsuan`, `cunai`, `imagepro`) in `.env`; capability matrices refreshed from 2026-09-09 live probes (`cunai` first verified for landscape + real RGBA transparency; `imagepro` documented to ignore both requested size and output format).
+- Restored the per-provider transparency matrix and workflow section (present in local docs, dropped by the 2.5 upgrade package) and adapted its wording to the 2.5 capability model.
+- The provider matrices in `api-compatibility.md` reflect the 3-provider chain on top of the 2.5-upgraded code base.
+- Added `happyevering` as chain primary running `gpt-image-2.5-sunburst`; live probe 2026-09-10 verified real 1536x1024 output and true RGBA transparency — first live GPT Image 2.5 generation through this skill. Existing providers shift to fallback positions.
+- Fixed a provider-chain bug in `APIConfig.from_env` shipped with the 2.5 package: in chain mode, explicit `--model`/`--model-family`/`--base-url`/`--timeout`/`--max-retries` arguments were silently discarded in favor of the primary provider's fields, so `gpt-image-2.5-*` models could never pass capability validation on chain-configured machines (only reproducible with an `IMAGE_API_PROVIDERS` `.env`; the package's own tests ran in a clean environment). Explicit arguments now take precedence, and an explicit model without an explicit family infers the family instead of inheriting the primary's.
+
+## 1.3.0 - 2026-09-09
+
+- Added first-class GPT Image 2.5 Flare/Sunburst support, including `2026-09-08` snapshots and a new `gpt-image-2.5` capability family.
+- Added capability-based model validation instead of scattered GPT Image 2 string checks.
+- Added `xhigh` and `max` quality support for GPT Image 2.5 while retaining GPT Image 2 quality limits.
+- Updated transparent-background behavior: GPT Image 2.5 supports transparent PNG/WebP; GPT Image 2 is allowed with a preview warning.
+- Updated flexible-size validation and added an experimental-tier warning above 3,686,400 pixels.
+- Updated mask validation to current same-format, same-size, alpha-channel, and <50 MB requirements; mask MIME type is now detected dynamically.
+- Added Flare-vs-Sunburst routing guidance and a generalized GPT Image prompt guide.
+- Kept the default configured relay model on GPT Image 2 for backward compatibility with third-party providers.
+- Fixed two pre-existing fallback environment test fixtures and expanded regression coverage for GPT Image 2.5.
 
 ## 1.2.0 - 2026-07-13
 

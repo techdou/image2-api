@@ -5,12 +5,13 @@ import argparse
 import json
 import sys
 
+from image2lib.capabilities import QUALITY_CHOICES
 from image2lib.config import MODEL_FAMILIES
 from image2lib.prompting import PROFILES, lint_prompt, read_prompt
 
 
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Review a prompt against GPT Image 2 prompting patterns.")
+    p = argparse.ArgumentParser(description="Review a prompt against GPT Image prompting patterns.")
     source = p.add_mutually_exclusive_group(required=True)
     source.add_argument("--prompt")
     source.add_argument("--prompt-file")
@@ -20,7 +21,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--model-family", default="auto", choices=MODEL_FAMILIES)
     p.add_argument("--image-count", type=int, default=0)
     p.add_argument("--mask", action="store_true", help="Indicate that a mask will be supplied.")
-    p.add_argument("--quality", default="auto", choices=["low", "medium", "high", "auto"])
+    p.add_argument("--quality", default="auto", choices=QUALITY_CHOICES)
     p.add_argument("--size", default="auto")
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
     p.add_argument("--strict", action="store_true", help="Treat warnings as failures.")

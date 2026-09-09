@@ -29,6 +29,15 @@ class ConfigTests(unittest.TestCase):
     def test_alias_model_family(self):
         self.assertEqual(resolve_model_family("image-2", "gpt-image-2"), "gpt-image-2")
 
+    def test_gpt_image_25_flare_family(self):
+        self.assertEqual(resolve_model_family("gpt-image-2.5-flare", "auto"), "gpt-image-2.5")
+
+    def test_gpt_image_25_sunburst_snapshot_family(self):
+        self.assertEqual(
+            resolve_model_family("gpt-image-2.5-sunburst-2026-09-08", "auto"),
+            "gpt-image-2.5",
+        )
+
     def test_unrecognized_auto_alias_is_generic(self):
         self.assertEqual(resolve_model_family("image-2", "auto"), "generic")
 

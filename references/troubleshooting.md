@@ -15,9 +15,10 @@
 
 ## 400 invalid parameter
 
-- Retry with a standard size like `1024x1024`, `1536x1024`, or `1024x1536` to test whether the relay rejects large or custom dimensions. GPT Image 2 supports up to 3840×3840 natively, but some relays cap resolution or remap sizes — check actual output in `metadata.json`.
+- Retry with a standard size like `1024x1024`, `1536x1024`, or `1024x1536` to test whether the relay rejects large or custom dimensions. GPT Image 2/2.5 allow flexible sizes up to a 3840px edge within the documented pixel/ratio limits, but some relays cap or remap sizes — check actual output in `metadata.json`.
+- For GPT Image 2.5, confirm the relay actually exposes the requested Flare/Sunburst alias before using `xhigh` or `max`.
+- For transparent output, use PNG or WebP. GPT Image 2 transparency is preview; GPT Image 2.5 supports it directly.
 - Remove relay-unsupported fields.
-- For transparent output: confirm the prompt explicitly says "transparent background" (decisive on `fushengyunsuan`; the request field alone is not enough), then check the output alpha channel. `imagepro` ignores transparency entirely — switch provider rather than dropping the requirement. Do not blame UA or `moderation` fields; ruled out by controlled probes (2026-08).
 - Do not send `input_fidelity` for GPT Image 2.
 - Use sequential mode instead of `n > 1`.
 - For edits, verify the relay implements multipart `/images/edits`.
@@ -52,7 +53,7 @@ Common fixes:
 - add `Preserve exactly` and `Change only` sections for edits;
 - identify each reference image by index and role;
 - specify columns, panels, arrow direction, or spatial placement for structured visuals;
-- act on the transparency verification warning: confirm the provider passes `background=transparent` through and the output file has an alpha channel before shipping transparent assets.
+- keep transparency instructions consistent with the API settings; use PNG/WebP when `background=transparent`.
 
 Strict mode is intentionally conservative. Use normal warning mode when a flagged choice is deliberate.
 
@@ -74,10 +75,11 @@ The validator rejects HTML error pages and invalid image bytes. URL-based image 
 
 ## Mask rejected
 
-- The mask must be PNG and contain an alpha channel.
+- The mask must contain an alpha channel.
 - At least part of the mask must be transparent; transparent areas indicate the edit region.
-- The first image and mask must use the same dimensions; their file formats may differ.
-- The PNG mask must be smaller than 4 MB.
+- The first image and mask must use the same dimensions and the same file format.
+- The mask must be smaller than 50 MB.
+- PNG or WebP are practical choices because JPEG cannot contain the required alpha channel.
 - Each source/reference image must be PNG, JPEG, or WebP and smaller than 50 MB.
 - A request may contain at most 16 source/reference images.
 
@@ -95,6 +97,6 @@ The validator rejects HTML error pages and invalid image bytes. URL-based image 
 - Quote exact copy.
 - Request verbatim rendering exactly once.
 - Add a spelling aid for uncommon names.
-- Use medium or high quality.
+- Use medium or high quality first; on GPT Image 2.5, test `xhigh` or `max` only if a concrete typography requirement remains unmet.
 - Keep copy short and inspect the output.
 - For long or legally exact text, generate the visual without text and typeset it afterward.

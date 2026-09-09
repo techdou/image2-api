@@ -83,19 +83,47 @@ class CLITests(unittest.TestCase):
         self.assertEqual(payload["review"]["profile"], "project-hero")
         self.assertIn("Scene and background:", payload["prompt"])
 
-    def test_alias_family_accepts_transparent_background(self):
+    def test_alias_family_allows_transparent_png_with_preview_warning(self):
         proc = subprocess.run(
             [
                 sys.executable,
                 str(ROOT / "scripts/generate_image.py"),
                 "--prompt",
-                "Create a logo with a distinctive silhouette.",
+                "Create a logo with a distinctive silhouette and balanced negative space.",
                 "--model",
                 "image-2",
                 "--model-family",
                 "gpt-image-2",
                 "--background",
                 "transparent",
+                "--output-format",
+                "png",
+                "--dry-run",
+                "--json",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertTrue(any("preview" in warning for warning in payload["warnings"]))
+
+    def test_gpt_image_25_xhigh_dry_run(self):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts/generate_image.py"),
+                "--prompt",
+                "Create a clean product cutout with crisp edges and no extra text.",
+                "--model",
+                "gpt-image-2.5-sunburst",
+                "--quality",
+                "xhigh",
+                "--background",
+                "transparent",
+                "--output-format",
+                "png",
                 "--dry-run",
                 "--json",
             ],

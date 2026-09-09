@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from image2lib.client import ImageAPIClient, ImageAPIError, entry_to_bytes, extract_image_entries
+from image2lib.capabilities import QUALITY_CHOICES
 from image2lib.config import APIConfig, MODEL_FAMILIES
 from image2lib.outputs import RunOutput, extension_for_format
 from image2lib.prompting import PROFILES, lint_prompt, read_prompt
@@ -24,7 +25,7 @@ from image2lib.validation import (
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Edit images through an OpenAI-compatible Images API relay.")
     p.add_argument("--image", action="append", required=True, help="Input/reference image. Repeat for multiple images.")
-    p.add_argument("--mask", help="Optional PNG mask; transparent areas indicate the edit region.")
+    p.add_argument("--mask", help="Optional mask matching the first image format and dimensions; it must contain an alpha channel.")
     source = p.add_mutually_exclusive_group(required=True)
     source.add_argument("--prompt", help="Edit prompt text.")
     source.add_argument("--prompt-file", help="UTF-8 text file containing the prompt.")
@@ -38,8 +39,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--prompt-lint", default="warn", choices=["off", "warn", "strict"], help="Review prompt quality before the API call.")
     p.add_argument("--base-url", help="API base URL override, normally ending in /v1.")
     p.add_argument("--endpoint", help="Full edit endpoint override.")
-    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2: edges <=3840px, multiples of 16, ratio <=3:1.")
-    p.add_argument("--quality", default="high", choices=["low", "medium", "high", "auto"])
+    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2/2.5: edges <=3840px, multiples of 16, ratio <=3:1.")
+    p.add_argument("--quality", default="high", choices=QUALITY_CHOICES)
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
     p.add_argument("--output-format", default="png", choices=["png", "jpeg", "webp"])
     p.add_argument("--output-compression", type=int)
@@ -59,7 +60,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def _fields(
-    args: argparse.Namespace, prompt: str, model: str, n: int, *, is_gpt_image_2: bool
+    args: argparse.Namespace, prompt: str, model: str, n: int, *, omit_input_fidelity: bool
 ) -> dict[str, Any]:
     fields: dict[str, Any] = {
         "model": model,
@@ -69,9 +70,8 @@ def _fields(
         "quality": args.quality,
         "background": args.background,
         "output_format": args.output_format,
+        "moderation": args.moderation,
     }
-    if args.moderation != "auto":
-        fields["moderation"] = args.moderation
     if args.output_compression is not None:
         fields["output_compression"] = args.output_compression
     fields = merge_extra_params(
@@ -83,7 +83,7 @@ def _fields(
             "image", "image[]", "mask",
         },
     )
-    if is_gpt_image_2:
+    if omit_input_fidelity:
         fields.pop("input_fidelity", None)
     return fields
 
@@ -139,10 +139,10 @@ def main() -> int:
         if mode == "auto":
             mode = "single" if args.count == 1 else "sequential"
         planned_fields = (
-            [_fields(args, prompt, config.model, args.count, is_gpt_image_2=config.is_gpt_image_2)]
+            [_fields(args, prompt, config.model, args.count, omit_input_fidelity=config.capabilities.omit_input_fidelity)]
             if mode == "single"
             else [
-                _fields(args, prompt, config.model, 1, is_gpt_image_2=config.is_gpt_image_2)
+                _fields(args, prompt, config.model, 1, omit_input_fidelity=config.capabilities.omit_input_fidelity)
                 for _ in range(args.count)
             ]
         )

@@ -8,12 +8,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
+from .capabilities import MODEL_FAMILIES, model_capabilities, resolve_model_family
+
 try:
     from dotenv import load_dotenv
 except ImportError:  # doctor.py reports the missing optional dependency.
     load_dotenv = None
 
-MODEL_FAMILIES = ("auto", "gpt-image-2", "gpt-image-1.5", "generic")
 
 
 def _find_skill_root() -> Path:
@@ -167,24 +168,6 @@ def parse_extra_headers(raw: str | None) -> dict[str, str]:
             continue
         result[str(key)] = str(value)
     return result
-
-
-def resolve_model_family(model: str, configured: str | None = None) -> str:
-    family = (configured or "auto").strip().lower()
-    if family not in MODEL_FAMILIES:
-        raise ValueError(
-            f"Unknown model family {configured!r}. Choose from: {', '.join(MODEL_FAMILIES)}."
-        )
-    if family != "auto":
-        return family
-    normalized = model.strip().lower()
-    if normalized == "gpt-image-2" or normalized.startswith("gpt-image-2-"):
-        return "gpt-image-2"
-    if normalized in {"gpt-image-1.5", "gpt-image-1"} or normalized.startswith(
-        ("gpt-image-1.5-", "gpt-image-1-")
-    ):
-        return "gpt-image-1.5"
-    return "generic"
 
 
 @dataclass(slots=True)
@@ -360,15 +343,22 @@ class APIConfig:
         chain = ProviderChain.from_env()
         if chain is not None:
             primary = chain.profiles[0]
+            # Explicit arguments override the primary provider's fields, matching
+            # the single-provider branch precedence (CLI > provider config).
             return cls(
                 api_key=primary.api_key,
-                base_url=primary.base_url,
-                model=primary.model,
-                model_family=primary.model_family,
-                generations_url=primary.generations_url,
-                edits_url=primary.edits_url,
-                timeout=primary.timeout,
-                max_retries=primary.max_retries,
+                base_url=normalize_base_url(base_url or primary.base_url),
+                model=(model or primary.model),
+                # The primary's family describes the primary's model; when an
+                # explicit model overrides it, infer the family instead.
+                model_family=(
+                    model_family
+                    or (primary.model_family if model is None else "auto")
+                ),
+                generations_url=generations_url or primary.generations_url,
+                edits_url=edits_url or primary.edits_url,
+                timeout=timeout if timeout is not None else primary.timeout,
+                max_retries=max_retries if max_retries is not None else primary.max_retries,
                 verify_ssl=primary.verify_ssl,
                 extra_headers=dict(primary.extra_headers),
                 chain=chain,
@@ -401,8 +391,16 @@ class APIConfig:
         return resolve_model_family(self.model, self.model_family)
 
     @property
+    def capabilities(self):
+        return model_capabilities(self.model, self.model_family)
+
+    @property
     def is_gpt_image_2(self) -> bool:
         return self.resolved_model_family == "gpt-image-2"
+
+    @property
+    def is_gpt_image_25(self) -> bool:
+        return self.resolved_model_family == "gpt-image-2.5"
 
     @property
     def primary_profile(self) -> ProviderProfile:
@@ -449,8 +447,9 @@ class APIConfig:
             )
         if self.model_family == "auto" and self.resolved_model_family == "generic":
             warnings.append(
-                "The relay model alias is not recognized. Set IMAGE_API_MODEL_FAMILY=gpt-image-2 "
-                "when the alias maps to GPT Image 2 so model-specific validation remains active."
+                "The relay model alias is not recognized. Set IMAGE_API_MODEL_FAMILY to the "
+                "underlying family (for example gpt-image-2.5 or gpt-image-2) so model-specific "
+                "validation remains active."
             )
         if not self.verify_ssl:
             warnings.append("TLS certificate verification is disabled.")

@@ -342,7 +342,7 @@ class ImageAPIClient:
         for path in image_paths:
             files.append(("image[]", (path.name, path.read_bytes(), media_type_for(path))))
         if mask_path:
-            files.append(("mask", (mask_path.name, mask_path.read_bytes(), "image/png")))
+            files.append(("mask", (mask_path.name, mask_path.read_bytes(), media_type_for(mask_path))))
         data: dict[str, str] = {}
         for key, value in fields.items():
             if value is None:

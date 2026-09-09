@@ -84,15 +84,13 @@ class PromptTests(unittest.TestCase):
         self.assertIn("edit-scope-not-surgical", codes)
         self.assertIn("multi-image-roles-missing", codes)
 
-    def test_transparent_background_is_warning_for_image2(self):
+    def test_transparent_background_is_not_rejected_by_prompt_lint(self):
         report = lint_prompt(
-            "Create a logo on a transparent background.",
+            "Create a logo on a transparent background with a distinctive silhouette and strong negative space.",
             profile="logo",
             model="gpt-image-2",
         )
-        codes = {issue.code for issue in report.issues}
-        self.assertIn("transparent-background-verify", codes)
-        self.assertNotIn("transparent-unsupported", codes)
+        self.assertNotIn("transparent-unsupported", {issue.code for issue in report.issues})
         self.assertNotEqual(report.status, "fail")
 
     def test_text_low_quality_warning(self):
@@ -162,14 +160,14 @@ class PromptTests(unittest.TestCase):
         )
         self.assertEqual(profile, "product")
 
-    def test_alias_family_warns_on_transparency_verification(self):
+    def test_alias_family_preserves_resolved_family_in_review(self):
         report = lint_prompt(
             "Create a simple logo on a transparent background with a distinctive silhouette.",
             profile="logo",
             model="image-2",
             model_family="gpt-image-2",
         )
-        self.assertIn("transparent-background-verify", {issue.code for issue in report.issues})
+        self.assertEqual(report.features["model_family"], "gpt-image-2")
 
 
 if __name__ == "__main__":

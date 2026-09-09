@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from .capabilities import resolve_model_family
+
 MAX_PROMPT_CHARS = 32_000
 
 PROFILES = (
@@ -485,11 +487,7 @@ def lint_prompt(
 
     issues: list[PromptIssue] = []
     lower = text.lower()
-    normalized_model = model.strip().lower()
-    is_image2 = model_family == "gpt-image-2" or (
-        model_family == "auto"
-        and (normalized_model == "gpt-image-2" or normalized_model.startswith("gpt-image-2-"))
-    )
+    resolved_family = resolve_model_family(model, model_family)
     text_requested = _contains_text_request(text)
     exact_copy = _has_exact_copy(text)
     no_text = bool(re.search(r"\b(no text|without text|do not render any text)\b|无文字|不要文字", text, re.I))
@@ -712,24 +710,12 @@ def lint_prompt(
             )
         )
 
-    if is_image2 and (background == "transparent" or "transparent background" in lower):
-        issues.append(
-            PromptIssue(
-                "transparent-background-verify",
-                "warning",
-                "Transparent backgrounds are officially supported by gpt-image-2 (preview, png/webp only), "
-                "but support depends on the relay actually passing the parameter through.",
-                "Use a provider verified for transparency and check the saved file has an alpha channel "
-                "with transparent pixels; some relays accept the flag but silently return an opaque image.",
-            )
-        )
-
     if re.search(r"\bnegative[_ -]?prompt\b", text, re.I):
         issues.append(
             PromptIssue(
                 "negative-prompt-syntax",
                 "warning",
-                "GPT Image 2 does not require a separate negative-prompt syntax inside the prompt.",
+                "GPT Image models do not require a separate negative-prompt syntax inside the prompt.",
                 "Write natural constraints such as 'Do not include watermarks, extra text, or unrelated logos.'",
             )
         )
@@ -750,7 +736,7 @@ def lint_prompt(
         "size": size,
         "background": background,
         "model": model,
-        "model_family": model_family,
+        "model_family": resolved_family,
     }
     return PromptReview(selected, operation, status, issues, features)
 
@@ -827,7 +813,7 @@ def brief_schema() -> dict[str, Any]:
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://techdou.com/schemas/image2-prompt-brief.schema.json",
-        "title": "GPT Image 2 prompt brief",
+        "title": "GPT Image prompt brief",
         "type": "object",
         "minProperties": 1,
         "properties": properties,

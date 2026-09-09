@@ -1,4 +1,4 @@
-# GPT Image 2 prompt recipes
+# GPT Image prompt recipes
 
 These are task patterns, not mandatory suffixes. Replace bracketed content and remove irrelevant sections.
 

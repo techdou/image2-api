@@ -6,6 +6,7 @@ import json
 import sys
 from pathlib import Path
 
+from image2lib.capabilities import QUALITY_CHOICES
 from image2lib.config import MODEL_FAMILIES
 from image2lib.prompting import (
     PROFILES,
@@ -19,7 +20,7 @@ from image2lib.prompting import (
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Compile a structured visual brief into a GPT Image 2 creative brief and optionally review it."
+        description="Compile a structured visual brief into a GPT Image creative brief and optionally review it."
     )
     p.add_argument("--brief", help="Path to a UTF-8 JSON brief.")
     p.add_argument("--output", help="Optional output prompt text file.")
@@ -29,7 +30,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--strict", action="store_true", help="Fail when prompt review returns warnings.")
     p.add_argument("--model", default="gpt-image-2")
     p.add_argument("--model-family", default="auto", choices=MODEL_FAMILIES)
-    p.add_argument("--quality", default="auto", choices=["low", "medium", "high", "auto"])
+    p.add_argument("--quality", default="auto", choices=QUALITY_CHOICES)
     p.add_argument("--size", default="auto")
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
     p.add_argument("--image-count", type=int, default=0)

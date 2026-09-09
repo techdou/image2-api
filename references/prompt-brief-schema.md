@@ -1,6 +1,6 @@
 # Structured prompt brief schema
 
-`scripts/build_prompt.py` accepts a JSON object and compiles it into a readable GPT Image 2 prompt. The schema is intentionally permissive so Agents can omit irrelevant fields.
+`scripts/build_prompt.py` accepts a JSON object and compiles it into a readable GPT Image prompt. The schema is intentionally permissive so Agents can omit irrelevant fields.
 
 ## Common fields
 

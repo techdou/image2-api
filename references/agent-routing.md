@@ -5,8 +5,8 @@
 Select `image2-api` when the request explicitly involves one or more of the following:
 
 - an OpenAI-compatible Images API;
-- a third-party GPT Image 2 relay or provider;
-- `gpt-image-2` or a relay alias such as `image-2`;
+- a third-party GPT Image relay or provider;
+- `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2`, or a relay alias such as `image-2`;
 - a custom `base_url`, token, endpoint, request header, or provider parameter;
 - `/v1/images/generations` or `/v1/images/edits`;
 - compiling or reviewing a prompt specifically for an API call;
@@ -29,7 +29,7 @@ Use two reference images and a PNG mask through the Images edit API. Preserve id
 ```
 
 ```text
-Turn this project brief into a normalized GPT Image 2 prompt, but perform only a dry run.
+Turn this project brief into a normalized GPT Image prompt for my relay, but perform only a dry run.
 ```
 
 ## Do not select this skill automatically
@@ -62,7 +62,7 @@ Those requests either belong to the host's built-in image capability or are not 
 
 For a bare request such as “帮我生图”, do not infer a third-party API merely because this skill is installed. Use the host image capability unless current conversation context already established that the requested operation must run through the user's relay.
 
-For “帮我写 GPT Image 2 prompt”, select this skill when the prompt is intended for API execution, an existing relay workflow, or this skill's prompt compiler/reviewer. For general discussion without intended execution, answer directly and avoid loading the full skill.
+For “帮我写 GPT Image prompt”, select this skill when the prompt is intended for API execution, an existing relay workflow, or this skill's prompt compiler/reviewer. For general discussion without intended execution, answer directly and avoid loading the full skill.
 
 ## Choose the operation
 
@@ -73,7 +73,7 @@ For “帮我写 GPT Image 2 prompt”, select this skill when the prompt is int
 
 ## Load references progressively
 
-- Prompt construction → `gpt-image-2-prompt-guide.md`
+- Prompt construction / 2.5 model selection → `gpt-image-prompt-guide.md`
 - Profile-specific templates → `prompt-recipes.md`
 - JSON brief fields → `prompt-brief-schema.md`
 - Relay parameters and limits → `api-compatibility.md`

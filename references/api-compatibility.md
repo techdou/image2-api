@@ -23,54 +23,65 @@ The run metadata records only whether a key is configured and the names of extra
 
 ## Model aliases and capability families
 
-A provider may expose GPT Image 2 under an alias such as `image-2`. Configure both fields:
+A provider may expose an official model under a custom alias. Configure both the provider-facing name and the underlying family:
 
 ```dotenv
-IMAGE_API_MODEL=image-2
-IMAGE_API_MODEL_FAMILY=gpt-image-2
+IMAGE_API_MODEL=image-2.5-pro
+IMAGE_API_MODEL_FAMILY=gpt-image-2.5
 ```
 
 Allowed families:
 
 - `auto` — infer from recognized official model names;
-- `gpt-image-2` — apply GPT Image 2-specific validation to an alias;
-- `gpt-image-1.5` — identify the earlier GPT Image family;
-- `generic` — use conservative relay-portability checks.
+- `gpt-image-2.5` — Flare/Sunburst capabilities, including `xhigh|max`;
+- `gpt-image-2` — GPT Image 2 capabilities;
+- `gpt-image-1.5` — earlier GPT Image family;
+- `generic` — conservative relay-portability behavior.
 
-When `auto` cannot recognize an alias, the CLI emits a warning instead of silently pretending the model is GPT Image 2.
+Official names recognized automatically include `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, their `2026-09-08` snapshots, and GPT Image 2 names. When `auto` cannot recognize a relay alias, the CLI warns instead of guessing its capability family.
+
+## GPT Image 2.5 request checks
+
+The local validator applies these current rules to Flare and Sunburst:
+
+- quality: `low`, `medium`, `high`, `xhigh`, `max`, or `auto`;
+- output format: PNG, JPEG, or WebP;
+- background: `auto`, `opaque`, or `transparent`;
+- transparent output requires PNG or WebP;
+- output compression: 0-100, only for JPEG or WebP;
+- output count: 1-10 per CLI run;
+- custom size: each edge <= 3840 px, both edges multiples of 16, total pixels 655,360-8,294,400, and long:short ratio <= 3:1;
+- outputs above 3,686,400 pixels (`2560x1440`) are accepted but reported as an experimental resolution tier.
+
+Use `gpt-image-2.5-flare` when speed is the primary goal and `gpt-image-2.5-sunburst` when demanding quality/editing precision is the primary goal. Compare them with the same prompt, references, size, format, and explicit quality before changing multiple variables at once.
 
 ## GPT Image 2 request checks
 
-The local validator applies these current model rules:
+GPT Image 2 keeps the same flexible-size geometry constraints but supports only `low`, `medium`, `high`, or `auto` quality. Transparent output is available in preview and must use PNG or WebP. The validator emits a preview warning rather than rejecting the request.
 
-- quality: `low`, `medium`, `high`, or `auto`;
-- output format: PNG, JPEG, or WebP;
-- background: `auto`, `opaque`, or `transparent` — transparent is officially supported by GPT Image 2 (preview, announced 2026-08): the model generates a real alpha channel directly. PNG or WebP output only; JPEG is rejected locally. Relay passthrough varies — see the transparency matrix below;
-- output compression: 0–100, only for JPEG or WebP;
-- output count: 1–10 per CLI run;
-- custom dimensions: GPT Image 2 accepts any resolution satisfying these constraints (per OpenAI image-generation guide): each edge ≤ 3840 px; both edges multiples of 16; total pixels 655,360–8,294,400; long-to-short edge ratio ≤ 3:1; 1K/2K/4K tiers map roughly to longest edge ~1024 / ~2048 / ~3840; common sizes include 1024×1024, 1536×1024, 1024×1536, 2048×2048, 2048×1152, 3840×2160, 2160×3840; aspect ratios are flexible (1:1, 2:3, 3:2, 16:9, 9:16, etc.);
-- this skill defaults to 2880×2880 (max legal square, 8,294,400 px) since most relays bill per-call, not per-pixel; for 16:9 use `3840x2160`, for 9:16 use `2160x3840`, for 4:5 use `2304x2880`; override with `--size` when a smaller output is desired;
-- `input_fidelity` is removed for GPT Image 2 because the model processes image inputs at high fidelity automatically.
+For edit/reference workflows, the skill removes `input_fidelity` from GPT Image 2 requests because the API does not allow changing it; GPT Image 2 processes image inputs at high fidelity automatically. The skill does not assume this rule for unrelated relay families.
 
-Third-party relays may cap resolution or remap sizes. GPT Image 2 natively supports up to 4K (3840px longest edge); verify a relay passes through your requested size by checking actual output dimensions in `metadata.json`.
+## Defaults and relay caveats
 
-## Per-provider size capability (实测 2026-07)
+The CLI default remains `2048x2048` and `quality=high`. The configured default model remains `gpt-image-2` for backward compatibility with existing third-party relays; upgrading the skill does not assume that every relay already exposes Flare or Sunburst.
+
+Third-party relays may cap resolution, remap model aliases, ignore transparency, reject `xhigh|max`, or omit edit/mask support even when the request shape is OpenAI-compatible. Verify requested vs actual output dimensions in `metadata.json`.
+
+## Per-provider size capability (2026-07 全测，2026-09-09 复测)
 
 Different providers in the chain support different size sets. **Pick a provider that supports the requested size before calling, not after a 400.**
 
 | Provider | model alias | 全 size 支持 | 实测通过 |
 |---|---|---|---|
-| **fushengyunsuan** | gpt-image-2 | ✅ 是 | 1024x1024, 1536x1024, 1024x1536, 1792x1024, 1024x1792, 2048x2048, 2048x1152 |
-| **agnes** | agnes-image-2.1-flash | ⚠️ 部分 | 1024x1024 OK；其他 size 偶发 503（上游繁忙，不代表不支持），需重试或换 provider |
-| **imagepro** | image-pro | ❌ 仅正方形 | 1024x1024, 2048x2048 OK；1536x1024, 1024x1536 报 400 |
-| cunai | gpt-image-2 | 未测 | 用前 curl 探活 |
-| jbbtoken / jbbtoken_vip / luminai | gpt-image-2 / vip-image | 未测 | 用前 curl 探活 |
+| **happyevering** | gpt-image-2.5-sunburst (另有 gpt-image-2.5-flare / gpt-image-2-4k) | ✅ 非方形已验证 (2.5) | 2026-09-10 实测 1536x1024 通过，输出尺寸与请求一致 |
+| **fushengyunsuan** | gpt-image-2 | ✅ 是 | 2026-07 全测 7 种通过（1024x1024, 1536x1024, 1024x1536, 1792x1024, 1024x1792, 2048x2048, 2048x1152）；2026-09-09 复测 1536x1024 通过，输出尺寸与请求一致 |
+| **cunai** | gpt-image-2 | ✅ 非方形已验证 | 2026-09-09 实测 1536x1024 通过，输出尺寸与请求一致（此前"未测"，现已验证） |
+| **imagepro** | image-pro | ❌ 仅正方形 | 非正方形（1536x1024）报 400（2026-09-09 复测仍如此）；正方形请求被接受但 **size 参数对输出无效**：2026-09-09 请求 1024x1024 实际返回 2048x2048，输出尺寸固定 2048 方形 |
 
 ### 用 size 选 provider 的策略
 
-1. **需要横版/竖版/特殊比例（公众号横版、小红书竖版、3:2、16:9）**：优先用 `fushengyunsuan`（实测 7 种 size 全过）。
-2. **agnes 上游频繁 503**：不要依赖 agnes 做主力 size 任务，可作 fallback。
-3. **imagepro 只能正方形**：横/竖版请求会被拒（400），fallback_status 不会触发（400 不在 fallback 列表），所以请求会直接失败。如果要用非正方形 size，**不要把 imagepro 排在主位**。
+1. **需要横版/竖版/特殊比例（公众号横版、小红书竖版、3:2、16:9）**：优先用 `happyevering`（2.5 sunburst，2026-09-10 已验证非方形+透明）；`fushengyunsuan`（2026-07 实测 7 种全过，2026-09 复测通过）与 `cunai`（2026-09-09 已验证非方形）作替补。
+2. **imagepro 只能正方形，且 size 参数对输出无效**：横/竖版请求会被拒（400），fallback_status 不会触发（400 不在 fallback 列表），所以请求会直接失败。正方形请求虽被接受，实际输出固定 2048x2048——要精确控制输出尺寸不要用 imagepro。非正方形 size 场景**不要把 imagepro 排在主位**。
 4. **未知 provider 的 size 能力**：先 curl 探活再正式调用：
    ```bash
    curl -X POST "$URL" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
@@ -79,19 +90,20 @@ Different providers in the chain support different size sets. **Pick a provider 
    HTTP 200 = 支持；HTTP 400 = 不支持该 size；HTTP 503/504 = 上游繁忙，重试或换 provider。
 5. **provider 排序建议**（按 size 能力）：
    ```dotenv
-   IMAGE_API_PROVIDERS=fushengyunsuan,cunai,imagepro,jbbtoken_vip,agnes,luminai,jbbtoken
+   IMAGE_API_PROVIDERS=happyevering,fushengyunsuan,cunai,imagepro
    ```
    `fushengyunsuan` 主力（size 全 + 稳定），`imagepro` 作 fallback（正方形场景）。如果常用非正方形 size，考虑把 `imagepro` 后移或移除。
 
-## Per-provider transparency capability (实测 2026-08)
+## Per-provider transparency capability (2026-08 对照实验，2026-09-09 复测)
 
-`background=transparent` 是 gpt-image-2 官方原生能力（preview，官方 2026-08 公告：模型直接输出带 alpha 通道的 PNG/WebP，无需事后抠图）。但各中转透传情况不一，**必须实测**：
+Transparent output is native to `gpt-image-2.5` (PNG/WebP) and officially supported in preview by `gpt-image-2`. Relay passthrough still varies — **probe before relying on it**:
 
 | Provider | transparent 实测 | 结果 |
 |---|---|---|
-| **fushengyunsuan** | ✅ 可用（有前提） | prompt 显式写 `transparent background` 时 3/3 返回 RGBA（背景 alpha=0、边缘自然羽化）；prompt 不写时 9/9 返回 RGB。`background=transparent` **参数字段未被可靠透传**，决定性通道是 prompt 文本 |
-| **imagepro** | ❌ 不支持 | prompt 含 transparent + 参数齐全仍返回 RGB 无 alpha，参数与 prompt 均被忽略 |
-| 其余 provider | 未测 | 用前按下述方法探活 |
+| **happyevering** | ✅ 可用 (2.5) | 2026-09-10 实测（sunburst）：prompt 含词 + `background=transparent`，返回 RGBA 真透明（1536x1024，alpha 0–254） |
+| **fushengyunsuan** | ✅ 可用（有前提） | prompt 显式写 `transparent background` 时 3/3 返回 RGBA（背景 alpha=0、边缘自然羽化）；prompt 不写时 9/9 返回 RGB。`background=transparent` **参数字段未被可靠透传**，决定性通道是 prompt 文本。2026-09-09 复测：prompt 含词 + 参数齐全，1/1 返回 RGBA 真透明，结论仍成立 |
+| **cunai** | ✅ 可用 | 2026-09-09 实测：prompt 含词 + `background=transparent` + png，返回 RGBA 真透明（1536x1024） |
+| **imagepro** | ❌ 不支持 | prompt 含 transparent + 参数齐全仍返回无 alpha 图像。2026-09-09 复测升级确认：连 `output_format=png` 都被忽略，返回的是 JPEG（RGB）——参数与 prompt 均被忽略，且输出格式不可控 |
 
 ### 透明任务工作流
 
@@ -109,12 +121,13 @@ Different providers in the chain support different size sets. **Pick a provider 
 
 ## Edit inputs and masks
 
-- A request accepts 1–16 source/reference images.
+- A request accepts 1-16 source/reference images.
 - Each source image must be PNG, JPEG/JPG, or WebP and smaller than 50 MB.
-- The mask must be a PNG smaller than 4 MB.
-- The mask must have an alpha channel and at least one transparent pixel.
-- The mask dimensions must match the first source image.
-- The first source image does not need to use the same file format as the PNG mask.
+- A mask must also be smaller than 50 MB.
+- The mask and first source image must use the same file format and dimensions.
+- The mask must contain an alpha channel and at least one transparent pixel.
+- PNG and WebP are practical masked-edit formats; JPEG cannot satisfy the alpha-channel requirement.
+- The client sends the mask using its actual MIME type instead of assuming PNG.
 
 The mask guides the model's edit region but is not a pixel-perfect compositor boundary.
 
@@ -124,7 +137,7 @@ Use repeated `--extra-param KEY=VALUE` only for provider-documented extensions. 
 
 Standard request fields cannot be overridden through `--extra-param`. This prevents a custom parameter from bypassing validated values such as `model`, `prompt`, `size`, `quality`, `n`, images, or mask.
 
-For a generic model family, provider-specific fields such as `input_fidelity` may be passed when documented. For `gpt-image-2`, the client removes `input_fidelity`.
+For a generic model family, provider-specific fields such as `input_fidelity` may be passed when documented. For `gpt-image-2`, the client removes `input_fidelity`; GPT Image 2.5 parameters are validated independently.
 
 ## Response shapes
 

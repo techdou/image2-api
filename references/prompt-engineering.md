@@ -1,10 +1,10 @@
 # Prompt engineering entry point
 
-The previous generic prompt notes have been replaced by a GPT Image 2-specific system.
+The prompt system is organized around current GPT Image 2.5/2 workflows and relay portability.
 
 Read in this order:
 
-1. `gpt-image-2-prompt-guide.md` — model behavior and prompting principles.
+1. `gpt-image-prompt-guide.md` — model selection, current parameters, and prompting principles.
 2. `prompt-recipes.md` — task-specific patterns.
 3. `prompt-brief-schema.md` — deterministic JSON-to-prompt compilation.
 4. `api-compatibility.md` — relay and parameter differences.
