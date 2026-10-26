@@ -1,10 +1,10 @@
 ---
 name: image2-api
-description: This skill should be used when the user asks to generate, edit, localize, composite, or batch-create images through an OpenAI-compatible Images API or a third-party GPT Image relay. Trigger on explicit mentions of gpt-image-2.5, gpt-image-2, Flare, Sunburst, an image model alias, custom base URL, /v1/images/generations, /v1/images/edits, API-based image generation, prompt compilation or review for an API call, reference images, masks, or reproducible image run metadata. Do not select it solely for ordinary built-in image generation when no API or relay workflow is requested.
-compatibility: Requires Python 3.10+, packages in requirements.txt, and network access for live API calls. Prompt compilation, linting, dry runs, validation, and tests work offline.
+description: "Preferred channel for AI image generation and editing (GPT Image 2.5 / 2 via configured OpenAI-compatible relays, multi-provider fallback). Ships both as this skill and as a registered MCP server (tools: generate_image, edit_image, check_prompt, diagnose_api) — call the MCP tools when available, the CLI scripts below otherwise; the two paths are equivalent. Use for any text-to-image or image edit/composite/localization request, especially when in-image text, exact sizes, transparent backgrounds, or reference-image control matter; explicit mentions of gpt-image-2.5, gpt-image-2, Flare, Sunburst, image model aliases, /v1/images/generations or /v1/images/edits; prompt compilation or review for an image API; relay configuration or connectivity diagnosis. Not for OCR or plain image format conversion."
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
   format: "agentskills.io"
+  compatibility: "Python 3.10+; scripts in requirements.txt; MCP server needs mcp>=2; live API calls need network + .env credentials; prompt lint/dry-run/validation/tests work offline"
 ---
 
 # Image 2 API
@@ -176,3 +176,36 @@ A successful API task must produce or explicitly report:
 - any relay capability limitation that prevented part of the request.
 
 Do not claim live generation succeeded when only prompt compilation, linting, or dry-run validation was performed.
+
+## MCP server（已封装，ZCode 等客户端可直接调用）
+
+本 skill 自带 stdio MCP server `mcp_server.py`（依赖 `mcp>=2`，MCPServer API），把 4 个高频入口封装成结构化 tools，agent 无需读本文档即可调用：
+
+| Tool | 包装脚本 | 说明 |
+|---|---|---|
+| `generate_image` | `scripts/generate_image.py` | 文生图；prompt/size/quality/count/background/output_format/prompt_profile/output_dir |
+| `edit_image` | `scripts/edit_image.py` | 编辑/合成/参考图；image_paths 列表 + mask_path + 同上参数 |
+| `check_prompt` | `scripts/prompt_doctor.py` | 离线 prompt 体检，不调 API |
+| `diagnose_api` | `scripts/doctor.py` | 配置/连通性诊断（key 不回显） |
+
+设计约束：
+
+- **薄封装**：subprocess 调 `scripts/*.py --json`，不复制业务逻辑，脚本升级即生效；
+- **凭证隔离**：.env 由脚本自身 dotenv 加载，server 不读不传 key；
+- **长 prompt 安全**：prompt 一律写临时文件走 `--prompt-file`，避开 Windows 命令行长度限制；
+- **本地 fail-fast**：size 规则（16 倍数、总像素 655,360–8,294,400、长宽比 ≤3:1）、输入图片存在性在调用前校验，省一次 API 往返；
+- **annotations**：`check_prompt`/`diagnose_api` 标 `readOnlyHint`（agent 可安全探查）；generate/edit 标非只读（产生文件、消耗额度）；
+- **warnings 透传**：脚本 stderr 的 WARN（lint 告警、能力降级）在成功响应里以 `warnings` 字段回传；
+- **默认输出**：`~/.agents/image2-api-output/<时间戳>/`，可用 `output_dir` 覆盖（相对路径按家目录展开）。
+
+注册配置（客户端 stdio server 示例，路径按实际安装位置替换）：
+
+```json
+"image2-api": {
+  "type": "stdio",
+  "command": "python",
+  "args": ["<abs-path-to-skill>/mcp_server.py"]
+}
+```
+
+MCP server 不可用时（未装 `mcp` 包、客户端未注册）回退到上方命令行工作流，两条路等价。升级脚本时 MCP 侧无需同步改动；新增 tool 需同时改 `mcp_server.py` 与本表。
