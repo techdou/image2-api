@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0 - 2026-10-26
+
+- Added a stdio MCP server (`mcp_server.py`, requires `mcp>=2`) wrapping the four highest-frequency entry points as structured tools: `generate_image`, `edit_image`, `check_prompt` (offline prompt review), and `diagnose_api` (config/connectivity diagnosis, keys never echoed).
+- MCP design: thin subprocess wrapper over `scripts/*.py --json` (business logic stays in the scripts, upgrades flow through automatically); credentials stay in `.env` loaded by the scripts themselves; prompts always go through a temp file (`--prompt-file`) to avoid Windows command-line length limits; local fail-fast validation for size rules (16-multiple edges, 655,360–8,294,400 total pixels, ≤3:1 ratio) and input-image existence; `readOnlyHint` annotations on the two read-only tools; script stderr warnings surfaced as a `warnings` field on success.
+- Default MCP output root is `~/.agents/image2-api-output/<timestamp>/` (overridable via `output_dir`).
+- SKILL.md: rewrote the description — the skill is now the preferred channel for any image generation/editing request (it previously told agents to skip it for ordinary image generation, which contradicted the MCP-first setup); moved the non-standard `compatibility` frontmatter field into `metadata`; documented the MCP server section and the CLI fallback path (both paths are equivalent).
+
 ## 1.4.0 - 2026-09-09
 
 - Merged the GPT Image 2.5 upgrade package (shipped externally as its own "1.3.0" dated 2026-09-09, see entry below) with the same-day local maintenance work; unified to 1.4.0 to avoid clashing 1.3.x numbers.

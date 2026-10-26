@@ -8,7 +8,7 @@
 
 ## 中文导读
 
-**这是什么**：一个 Agent Skill，通过 OpenAI 兼容的 Images API（或第三方 GPT Image 中转）生成、编辑图片。**不用于**普通内置画图——只有当工作流明确涉及 API/中转、自定义端点、模型别名、图生图、蒙版、prompt 编译或需要可复现的运行元数据时才触发。
+**这是什么**：一个 Agent Skill，通过 OpenAI 兼容的 Images API（或第三方 GPT Image 中转）生成、编辑图片。自 1.5.0 起同时以 MCP server 形式交付，是 AI 生图/改图的**首选渠道**——尤其当画内文字、精确尺寸、透明背景、参考图控制有要求时；也承接 API/中转配置、模型别名、prompt 编译审查等显式工作流。
 
 **快速上手**：
 
@@ -27,7 +27,9 @@ python scripts/doctor.py
 python scripts/generate_image.py --prompt-file prompt.txt --dry-run --json
 ```
 
-**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · GPT Image 2.5 Flare/Sunburst · 结构化 brief → GPT Image prompt 编译 · prompt 审查 · capability-based 模型校验 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测。
+**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · GPT Image 2.5 Flare/Sunburst · 结构化 brief → GPT Image prompt 编译 · prompt 审查 · capability-based 模型校验 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测 · stdio MCP server（4 tools）。
+
+**MCP 调用（可选）**：`pip install "mcp>=2"` 后把 `mcp_server.py` 注册为 stdio server，即可在 ZCode 等 MCP 客户端直调 4 个 tools：`generate_image` / `edit_image` / `check_prompt`（离线体检）/ `diagnose_api`（连通诊断）。与 CLI 路径等价；凭证仍由脚本自身从 `.env` 加载，不经过 server。详见 SKILL.md「MCP server」一节。
 
 **文档地图**（`references/` 目录）：`agent-routing` 触发边界 · `gpt-image-prompt-guide` prompt 设计与 Flare/Sunburst 选型 · `prompt-recipes` 配方 · `api-compatibility` API 细节 · `troubleshooting` 排错。
 
@@ -35,7 +37,7 @@ python scripts/generate_image.py --prompt-file prompt.txt --dry-run --json
 
 ---
 
-This skill is intentionally **not** the default route for ordinary “draw an image” requests. Use it when the workflow explicitly requires an API/relay, custom endpoint, model alias, image-edit request, mask, prompt compiler/reviewer, or reproducible run metadata.
+Since 1.5.0 this skill also ships as an MCP server and is the preferred channel for image generation/editing requests — especially when in-image text, exact sizes, transparent backgrounds, or reference-image control matter. Use the CLI below for API/relay configuration, model aliases, prompt compilation, and reproducible run metadata.
 
 ## What it provides
 
@@ -50,6 +52,7 @@ This skill is intentionally **not** the default route for ordinary “draw an im
 - Retry handling and sanitized response summaries
 - Image integrity, dimension, format, and SHA-256 metadata
 - Sequential candidate generation and contact sheets
+- stdio MCP server (`mcp_server.py`) exposing 4 structured tools
 - Agent Skills structural validation and trigger fixtures
 - Offline unit tests and a local mock relay smoke test
 
@@ -59,6 +62,7 @@ This skill is intentionally **not** the default route for ordinary “draw an im
 image2-api/
 ├── SKILL.md
 ├── README.md
+├── mcp_server.py
 ├── assets/
 │   └── prompt-brief.schema.json
 ├── evals/
@@ -267,6 +271,22 @@ python scripts/install_skill.py \
 ```
 
 The installed directory is always named `image2-api`, matching the `name` in `SKILL.md`.
+
+## Run as an MCP server
+
+Requires `mcp>=2` (`pip install "mcp>=2"`). Register as a stdio server (path per your install location):
+
+```json
+"image2-api": {
+  "type": "stdio",
+  "command": "python",
+  "args": ["<abs-path-to-skill>/mcp_server.py"]
+}
+```
+
+Tools: `generate_image` · `edit_image` (references/mask via `image_paths`/`mask_path`) · `check_prompt` (offline, free) · `diagnose_api` (read-only, keys never echoed).
+
+Design notes: thin subprocess wrapper over `scripts/*.py --json` (upgrades to the scripts flow through automatically); credentials stay in `.env` loaded by the scripts themselves; prompts go through a temp file to avoid Windows command-line length limits; size rules and input existence are validated locally before any API call; `readOnlyHint` annotations mark the two read-only tools. Default output root: `~/.agents/image2-api-output/<timestamp>/`. The CLI workflow below and the MCP tools are equivalent paths.
 
 ## Validate and test
 
