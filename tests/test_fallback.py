@@ -385,10 +385,10 @@ class FallbackEnvConfigTests(unittest.TestCase):
 
     def test_parses_two_providers(self):
         env = {
-            "IMAGE_API_PROVIDERS": "fenno,backup",
-            "IMAGE_API_FENNO_BASE_URL": "https://api.fenno.ai/v1",
-            "IMAGE_API_FENNO_KEY": "sk-fenno",
-            "IMAGE_API_FENNO_MODEL": "gpt-image-2",
+            "IMAGE_API_PROVIDERS": "primary,backup",
+            "IMAGE_API_PRIMARY_BASE_URL": "https://primary.example.com/v1",
+            "IMAGE_API_PRIMARY_KEY": "test-primary-token",
+            "IMAGE_API_PRIMARY_MODEL": "gpt-image-2",
             "IMAGE_API_BACKUP_BASE_URL": "https://backup.example.com/v1",
             "IMAGE_API_BACKUP_KEY": "sk-backup",
         }
@@ -400,15 +400,15 @@ class FallbackEnvConfigTests(unittest.TestCase):
             os.environ.pop("IMAGE_API_MODEL", None)
             chain = ProviderChain.from_env()
             self.assertIsNotNone(chain)
-            self.assertEqual([p.name for p in chain.profiles], ["fenno", "backup"])
-            self.assertEqual(chain.profiles[0].api_key, "sk-fenno")
+            self.assertEqual([p.name for p in chain.profiles], ["primary", "backup"])
+            self.assertEqual(chain.profiles[0].api_key, "test-primary-token")
             self.assertEqual(chain.profiles[1].api_key, "sk-backup")
 
     def test_raises_when_provider_missing_base_url(self):
         env = {
-            "IMAGE_API_PROVIDERS": "fenno",
-            "IMAGE_API_FENNO_KEY": "sk-fenno",
-            # IMAGE_API_FENNO_BASE_URL deliberately missing
+            "IMAGE_API_PROVIDERS": "primary",
+            "IMAGE_API_PRIMARY_KEY": "test-primary-token",
+            # IMAGE_API_PRIMARY_BASE_URL deliberately missing
         }
         with patch.dict("os.environ", env, clear=False):
             with self.assertRaisesRegex(ValueError, "BASE_URL is not set"):

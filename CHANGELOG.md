@@ -16,10 +16,7 @@
 ## 1.4.0 - 2026-09-09
 
 - Merged the GPT Image 2.5 upgrade package (shipped externally as its own "1.3.0" dated 2026-09-09, see entry below) with the same-day local maintenance work; unified to 1.4.0 to avoid clashing 1.3.x numbers.
-- Preserved from local maintenance: provider chain pruned 7 -> 3 (`fushengyunsuan`, `cunai`, `imagepro`) in `.env`; capability matrices refreshed from 2026-09-09 live probes (`cunai` first verified for landscape + real RGBA transparency; `imagepro` documented to ignore both requested size and output format).
-- Restored the per-provider transparency matrix and workflow section (present in local docs, dropped by the 2.5 upgrade package) and adapted its wording to the 2.5 capability model.
-- The provider matrices in `api-compatibility.md` reflect the 3-provider chain on top of the 2.5-upgraded code base.
-- Added `happyevering` as chain primary running `gpt-image-2.5-sunburst`; live probe 2026-09-10 verified real 1536x1024 output and true RGBA transparency — first live GPT Image 2.5 generation through this skill. Existing providers shift to fallback positions.
+- Consolidated the provider-chain implementation and documented portability checks for flexible sizes and transparency.
 - Fixed a provider-chain bug in `APIConfig.from_env` shipped with the 2.5 package: in chain mode, explicit `--model`/`--model-family`/`--base-url`/`--timeout`/`--max-retries` arguments were silently discarded in favor of the primary provider's fields, so `gpt-image-2.5-*` models could never pass capability validation on chain-configured machines (only reproducible with an `IMAGE_API_PROVIDERS` `.env`; the package's own tests ran in a clean environment). Explicit arguments now take precedence, and an explicit model without an explicit family infers the family instead of inheriting the primary's.
 
 ## 1.3.0 - 2026-09-09

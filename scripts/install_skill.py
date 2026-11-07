@@ -7,6 +7,13 @@ import shutil
 from pathlib import Path
 
 
+PUBLIC_PACKAGE_ENTRIES = {
+    ".env.example", ".gitignore", "CHANGELOG.md", "LICENSE", "README.md", "SKILL.md",
+    "agents", "assets", "evals", "examples", "mcp_server.py", "references",
+    "requirements.txt", "scripts", "tests",
+}
+
+
 def target_dir(target: str, scope: str, project_dir: Path) -> Path:
     if scope == "user":
         base = Path.home()
@@ -45,8 +52,17 @@ def main() -> int:
         except OSError as exc:
             print(f"Symlink unavailable ({exc}); falling back to copy.")
 
-    ignore = shutil.ignore_patterns(".env", ".venv", "venv", "__pycache__", "*.pyc", "outputs")
-    shutil.copytree(source, destination, ignore=ignore)
+    ignore_local = shutil.ignore_patterns(
+        ".*", "__pycache__", "*.pyc", "*.key", "*.pem", "*.token", "*.local.*",
+        "docs", "internal", "private", "drafts", "notes", "output", "outputs",
+    )
+
+    def ignore_unpublished(path: str, names: list[str]) -> set[str]:
+        if Path(path) == source:
+            return set(names) - PUBLIC_PACKAGE_ENTRIES
+        return ignore_local(path, names)
+
+    shutil.copytree(source, destination, ignore=ignore_unpublished)
     (destination / "outputs").mkdir(exist_ok=True)
     (destination / "outputs" / ".gitkeep").touch()
     print(f"Installed to {destination}")

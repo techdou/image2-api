@@ -111,57 +111,9 @@ The CLI uses `2048x2048` for still raster images, `auto` for GIF and SVG size, a
 
 Third-party relays may cap resolution, remap model aliases, ignore transparency, reject `xhigh|max`, or omit edit/mask support even when the request shape is OpenAI-compatible. Verify requested vs actual output dimensions in `metadata.json`.
 
-## Per-provider size capability (2026-07 全测，2026-09-09 复测)
+## Provider verification
 
-Different providers in the chain support different size sets. **Pick a provider that supports the requested size before calling, not after a 400.**
-
-| Provider | model alias | 全 size 支持 | 实测通过 |
-|---|---|---|---|
-| **happyevering** | gpt-image-2.5-sunburst (另有 gpt-image-2.5-flare / gpt-image-2-4k) | ✅ 非方形已验证 (2.5) | 2026-09-10 实测 1536x1024 通过，输出尺寸与请求一致 |
-| **fushengyunsuan** | gpt-image-2 | ✅ 是 | 2026-07 全测 7 种通过（1024x1024, 1536x1024, 1024x1536, 1792x1024, 1024x1792, 2048x2048, 2048x1152）；2026-09-09 复测 1536x1024 通过，输出尺寸与请求一致 |
-| **cunai** | gpt-image-2 | ✅ 非方形已验证 | 2026-09-09 实测 1536x1024 通过，输出尺寸与请求一致（此前"未测"，现已验证） |
-| **imagepro** | image-pro | ❌ 仅正方形 | 非正方形（1536x1024）报 400（2026-09-09 复测仍如此）；正方形请求被接受但 **size 参数对输出无效**：2026-09-09 请求 1024x1024 实际返回 2048x2048，输出尺寸固定 2048 方形 |
-
-### 用 size 选 provider 的策略
-
-1. **需要横版/竖版/特殊比例（公众号横版、小红书竖版、3:2、16:9）**：优先用 `happyevering`（2.5 sunburst，2026-09-10 已验证非方形+透明）；`fushengyunsuan`（2026-07 实测 7 种全过，2026-09 复测通过）与 `cunai`（2026-09-09 已验证非方形）作替补。
-2. **imagepro 只能正方形，且 size 参数对输出无效**：横/竖版请求会被拒（400），fallback_status 不会触发（400 不在 fallback 列表），所以请求会直接失败。正方形请求虽被接受，实际输出固定 2048x2048——要精确控制输出尺寸不要用 imagepro。非正方形 size 场景**不要把 imagepro 排在主位**。
-4. **未知 provider 的 size 能力**：先 curl 探活再正式调用：
-   ```bash
-   curl -X POST "$URL" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-     -d '{"model":"<alias>","prompt":"test","size":"<W>x<H>","quality":"low","n":1}'
-   ```
-   HTTP 200 = 支持；HTTP 400 = 不支持该 size；HTTP 503/504 = 上游繁忙，重试或换 provider。
-5. **provider 排序建议**（按 size 能力）：
-   ```dotenv
-   IMAGE_API_PROVIDERS=happyevering,fushengyunsuan,cunai,imagepro
-   ```
-   `fushengyunsuan` 主力（size 全 + 稳定），`imagepro` 作 fallback（正方形场景）。如果常用非正方形 size，考虑把 `imagepro` 后移或移除。
-
-## Per-provider transparency capability (2026-08 对照实验，2026-09-09 复测)
-
-Transparent output is native to `gpt-image-2.5` (PNG/WebP) and officially supported in preview by `gpt-image-2`. Relay passthrough still varies — **probe before relying on it**:
-
-| Provider | transparent 实测 | 结果 |
-|---|---|---|
-| **happyevering** | ✅ 可用 (2.5) | 2026-09-10 实测（sunburst）：prompt 含词 + `background=transparent`，返回 RGBA 真透明（1536x1024，alpha 0–254） |
-| **fushengyunsuan** | ✅ 可用（有前提） | prompt 显式写 `transparent background` 时 3/3 返回 RGBA（背景 alpha=0、边缘自然羽化）；prompt 不写时 9/9 返回 RGB。`background=transparent` **参数字段未被可靠透传**，决定性通道是 prompt 文本。2026-09-09 复测：prompt 含词 + 参数齐全，1/1 返回 RGBA 真透明，结论仍成立 |
-| **cunai** | ✅ 可用 | 2026-09-09 实测：prompt 含词 + `background=transparent` + png，返回 RGBA 真透明（1536x1024） |
-| **imagepro** | ❌ 不支持 | prompt 含 transparent + 参数齐全仍返回无 alpha 图像。2026-09-09 复测升级确认：连 `output_format=png` 都被忽略，返回的是 JPEG（RGB）——参数与 prompt 均被忽略，且输出格式不可控 |
-
-### 透明任务工作流
-
-1. **prompt 必须显式写明**，如 `... isolated object on transparent background, no shadow`——这是 fushengyunsuan 实测的决定性变量（单变量对照实验 2026-08-24：同 payload 同 UA，含词 RGBA、不含词 RGB）。同时带 `--background transparent`（对真透传 provider 生效，官方语义正确）。
-2. 生成命令带 `--output-format png`（JPEG 无 alpha 通道，本地校验已拦截该组合）。
-3. 验收必须查 alpha 通道，不能只看 HTTP 200（`imagepro` 会假装成功）：
-   ```python
-   from PIL import Image
-   img = Image.open("output.png")
-   assert img.mode == "RGBA", f"relay ignored transparent: mode={img.mode}"
-   lo, _ = img.getchannel("A").getextrema()
-   assert lo < 255, "no transparent pixels in output"
-   ```
-4. 透明输出失败时的排查顺序：先确认 prompt 含 `transparent background` → 换已验证 provider → 隔段时间重试（上游存在能力不一致的节点池，间歇性波动）。不要归因于 UA、`moderation` 等请求字段——已用对照实验排除（2026-08-24）。
+When dimensions or transparency are important, test the configured relay with one candidate before using it in a batch. Compare the actual width and height in `metadata.json`. For alpha output, request PNG or WebP with `background=transparent`, describe the transparent background in the prompt, and inspect the alpha channel in the saved file. A successful HTTP response alone does not establish that the provider honored these options.
 
 ## Edit inputs and masks
 
@@ -223,15 +175,15 @@ provider is fully self-contained under its own `IMAGE_API_<NAME>_*` set
 and providers are tried in the order listed.
 
 ```dotenv
-IMAGE_API_PROVIDERS=fenno,backup
+IMAGE_API_PROVIDERS=primary,backup
 
-IMAGE_API_FENNO_KEY=sk-...
-IMAGE_API_FENNO_BASE_URL=https://api.fenno.ai/v1
-IMAGE_API_FENNO_MODEL=gpt-image-2
-IMAGE_API_FENNO_MODEL_FAMILY=gpt-image-2
-IMAGE_API_FENNO_MAX_RETRIES=2
+IMAGE_API_PRIMARY_KEY=replace_with_provider_token
+IMAGE_API_PRIMARY_BASE_URL=https://primary.example.com/v1
+IMAGE_API_PRIMARY_MODEL=gpt-image-2
+IMAGE_API_PRIMARY_MODEL_FAMILY=gpt-image-2
+IMAGE_API_PRIMARY_MAX_RETRIES=2
 
-IMAGE_API_BACKUP_KEY=sk-...
+IMAGE_API_BACKUP_KEY=replace_with_provider_token
 IMAGE_API_BACKUP_BASE_URL=https://backup.example.com/v1
 IMAGE_API_BACKUP_MODEL=gpt-image-2
 IMAGE_API_BACKUP_MODEL_FAMILY=gpt-image-2
@@ -249,8 +201,7 @@ Within a single provider, the configured `IMAGE_API_<NAME>_MAX_RETRIES`
 (default 2) internal retries are exhausted before moving on. So a primary
 that fails twice with 503 will yield to the next provider.
 
-Status codes **not** in the fallback set terminate the request immediately
-(e.g. 400 means a malformed payload — switching providers will not help).
+Ordinary malformed requests stop the chain. For GIF and SVG, an explicit provider error about unsupported output or missing format access can also advance the chain.
 
 When every provider fails, the skill raises `ProviderChainError` whose
 `.attempts` attribute is a list describing each provider's outcome.
@@ -261,7 +212,7 @@ Run `doctor.py` to confirm the chain layout:
 
 ```text
 chain: 2 providers, fallback on status [429, 500, 502, 503, 504] network=True
-  provider fenno (primary): https://api.fenno.ai/v1 model=gpt-image-2 key_set=True
+  provider primary (primary): https://primary.example.com/v1 model=gpt-image-2 key_set=True
   provider backup (standby): https://backup.example.com/v1 model=gpt-image-2 key_set=True
 ```
 

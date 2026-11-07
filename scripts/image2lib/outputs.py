@@ -56,9 +56,8 @@ class RunOutput:
         """Build the output path for the image at position ``index`` (1-based).
 
         ``total`` is the user's requested count. Some relays return MORE
-        candidates than requested (e.g. fushengyunsuan returns 3 candidates
-        for count=1 because gpt-image-2-codex runs multiple passes). When
-        that happens, ``index`` will exceed ``total``. We must still produce
+        candidates than requested. When that happens, ``index`` will exceed
+        ``total``. We must still produce
         a unique filename for each candidate so they don't overwrite each
         other. The rule: if ``index > total`` we treat it as an "extra"
         candidate and always include the index in the filename.
