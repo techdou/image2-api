@@ -17,6 +17,8 @@ Reviewed on 2026-11-07.
 ## Agent Skills official/open specification
 
 - Agent Skills specification: https://agentskills.io/specification
+- Agent Skills description optimization: https://agentskills.io/skill-creation/optimizing-descriptions
+- OpenAI skill activation and metadata: https://learn.chatgpt.com/docs/build-skills
 - Agent Skills overview: https://agentskills.io/home
 - Anthropic Claude Code skills: https://docs.anthropic.com/en/docs/claude-code/skills
 - `skills-ref` reference implementation: https://github.com/agentskills/agentskills/tree/main/skills-ref

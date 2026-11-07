@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Literal
 
 from mcp.types import ToolAnnotations
 
@@ -41,11 +42,11 @@ DEFAULT_OUTPUT_ROOT = Path.home() / ".agents" / "image2-api-output"
 mcp = Server(
     "image2-api",
     instructions=(
-        "OpenAI-compatible image generation/editing channel (GPT Image 2.6, multi-provider "
-        "fallback). generate_image for text-to-image, edit_image for editing/composite/"
-        "reference-guided work (declare invariants first in the prompt), check_prompt "
-        "for free offline prompt review, diagnose_api for connectivity issues. "
-        "For native GIF or SVG output, explicitly select the format and a GPT Image 2.6 model."
+        "Use this server for a requested or established Images API workflow. "
+        "Use generate_image for text-only generation and edit_image when source images or masks are inputs. "
+        "PNG is the default. Explicit native GIF and SVG requests need GPT Image 2.6; SVG is generation-only. "
+        "Use dry_run to validate a request without an API call, check_prompt to review text offline, "
+        "and diagnose_api to inspect local provider configuration without a network probe."
     ),
 )
 
@@ -128,7 +129,7 @@ def generate_image(
     quality: str = "auto",
     count: int = 1,
     background: str = "auto",
-    output_format: str = "png",
+    output_format: Literal["png", "jpeg", "webp", "gif", "svg"] = "png",
     prompt_profile: str = "auto",
     output_dir: str = "",
     model: str = "",
@@ -139,7 +140,7 @@ def generate_image(
 ) -> dict:
     """AI 文生图（GPT Image 2.6 / 2.5 / 2，多 provider 自动 fallback）。
 
-    prompt: 图像描述（英文效果最佳；复杂需求按 brief 结构写：主体/场景/风格/构图/画内文字）。
+    prompt: 描述主体、场景、风格和构图。画内文字保留用户指定的语言和原文。
     size: auto 或宽x高，如 1536x1024。静态位图默认 2K 方图，GIF 和 SVG 默认 auto。
     quality: low|medium|high|xhigh|max|auto；探索期 low/medium，成品再调高。
     count: 生成张数 1-10。
@@ -147,11 +148,11 @@ def generate_image(
     output_format: png|jpeg|webp|gif|svg。默认 png。显式选择 svg 时使用 GPT Image 2.6，count 必须为 1。
     model/model_family: 可选模型名与别名能力系列，默认使用已配置的 provider。
     frame_count/frame_duration_ms: GIF 帧数与单帧毫秒数。
-    dry_run: 仅校验请求，跳过网络调用。
+    dry_run: 在本地写入请求计划，跳过 API 调用，不生成图片。
     prompt_profile: 任务画像（photorealistic/illustration/logo/ad/infographic/...），auto 自动判断。
     output_dir: 输出目录（绝对或相对家目录），默认 ~/.agents/image2-api-output/<时间戳_唯一后缀>/。
 
-    返回 {ok, result: {images: [路径...], ...}, warnings?}；images 为生成文件的绝对路径。
+    成功或部分成功的文件路径在 result.images，干跑返回 result.dry_run 和 result.run_dir。
     """
     if not prompt.strip():
         return _fail("prompt is empty")
@@ -174,7 +175,7 @@ def edit_image(
     mask_path: str = "",
     size: str = "",
     quality: str = "high",
-    output_format: str = "png",
+    output_format: Literal["png", "jpeg", "webp", "gif"] = "png",
     prompt_profile: str = "edit",
     output_dir: str = "",
     model: str = "",
@@ -190,14 +191,14 @@ def edit_image(
     mask_path: 可选蒙版（与第一张图同尺寸同格式、含 alpha 透明编辑区，png/webp）。
     size: auto 或宽x高，留空使用脚本默认。
     quality: 编辑类默认 high 保主体还原。
-    output_format: png|jpeg|webp|gif。GIF 使用 GPT Image 2.6，编辑时提供静态参考图。
+    output_format: png|jpeg|webp|gif。GIF 使用 GPT Image 2.6，提供静态参考图且不传 mask_path。
     model/model_family: 可选模型名与别名能力系列，默认使用已配置的 provider。
     frame_count/frame_duration_ms: GIF 帧数与单帧毫秒数。
-    dry_run: 仅校验请求，跳过网络调用。
+    dry_run: 在本地写入请求计划，跳过 API 调用，不生成图片。
     prompt_profile: 默认 edit；翻译/合成可用 translation/composite。
     output_dir: 同 generate_image。
 
-    返回 {ok, result: {images: [路径...], ...}, warnings?}。
+    成功或部分成功的文件路径在 result.images，干跑返回 result.dry_run 和 result.run_dir。
     """
     if not image_paths:
         return _fail("image_paths is empty; edit needs at least one input image")
@@ -233,7 +234,7 @@ def check_prompt(prompt: str, operation: str = "generate", profile: str = "gener
 
 @mcp.tool(annotations=RO)
 def diagnose_api() -> dict:
-    """诊断 API 配置连通性（只读）：检查 .env 各 provider 凭证完整性并探测端点（key 不回显）。生图报错时先跑这个。"""
+    """离线检查模型、provider 配置和凭证是否已设置。跳过网络探测，返回信息不含密钥。"""
     return _run("doctor.py", [])
 
 

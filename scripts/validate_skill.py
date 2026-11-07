@@ -66,17 +66,15 @@ def validate(root: Path) -> dict[str, Any]:
 
     name = meta.get("name", "")
     description = meta.get("description", "")
-    compatibility = meta.get("compatibility", meta.get("metadata.compatibility", ""))
+    compatibility = meta.get("compatibility", "")
     version = meta.get("metadata.version", "")
 
-    _add(checks, bool(NAME_RE.fullmatch(name)), "name-format", f"Skill name is {name!r} and must use lowercase hyphen-case.")
+    _add(checks, len(name) <= 64 and bool(NAME_RE.fullmatch(name)), "name-format", f"Skill name is {name!r} and must use lowercase hyphen-case.")
     _add(checks, root.name == name, "name-directory-match", f"Directory {root.name!r} must match frontmatter name {name!r}.")
     _add(checks, 1 <= len(description) <= 1024, "description-length", f"Description length is {len(description)}; expected 1-1024 characters.")
-    _add(checks, description.startswith("This skill should be used"), "description-third-person", "Description should begin with a third-person activation phrase.")
-    trigger_terms = ["OpenAI-compatible", "gpt-image-2", "base URL", "/v1/images/generations", "mask"]
+    trigger_terms = ["Images API", "relay", "image2-api MCP", "GIF", "SVG"]
     missing_terms = [term for term in trigger_terms if term.lower() not in description.lower()]
-    _add(checks, not missing_terms, "description-triggers", "Description contains explicit API/model/edit triggers." if not missing_terms else "Missing trigger terms: " + ", ".join(missing_terms))
-    _add(checks, "Do not select" in description, "description-negative-boundary", "Description includes a negative activation boundary.")
+    _add(checks, not missing_terms, "description-triggers", "Description includes the API scope and output capabilities." if not missing_terms else "Missing trigger terms: " + ", ".join(missing_terms))
     _add(checks, len(compatibility) <= 500, "compatibility-length", f"Compatibility length is {len(compatibility)}; maximum is 500.")
     _add(checks, version == __version__, "version-consistency", f"Frontmatter version {version!r} must equal code version {__version__!r}.")
     _add(checks, len(text.splitlines()) <= 500, "skill-line-count", f"SKILL.md has {len(text.splitlines())} lines; expected no more than 500.")
@@ -87,6 +85,7 @@ def validate(root: Path) -> dict[str, Any]:
     _add(checks, not missing_paths, "referenced-paths", "All SKILL.md resource paths exist." if not missing_paths else "Missing paths: " + ", ".join(missing_paths))
 
     required = [
+        "agents/openai.yaml",
         "README.md",
         "requirements.txt",
         "scripts/generate_image.py",
@@ -129,14 +128,46 @@ def validate(root: Path) -> dict[str, Any]:
             and fixtures.get("version") == __version__
             and len(cases) >= 8
             and len(ids) == len(set(ids))
-            and {"select", "do-not-select"}.issubset(expected)
-            and all(case.get("prompt") for case in cases)
+            and expected == {"select", "do-not-select"}
+            and all(
+                case.get("prompt") and case.get("id") and case.get("split") in {"development", "holdout"}
+                for case in cases
+            )
+            and all(
+                {case["expected"] for case in cases if case.get("split") == split} == expected
+                for split in ("development", "holdout")
+            )
+            and all(_valid_eval_route(case) for case in cases)
         )
         _add(checks, fixture_ok, "trigger-fixtures", f"Trigger fixtures contain {len(cases)} unique positive/negative cases.")
     except Exception as exc:
         _add(checks, False, "trigger-fixtures", f"Cannot validate trigger fixtures: {exc}")
 
     return {"ok": all(item["ok"] for item in checks), "root": str(root), "version": __version__, "checks": checks}
+
+
+def _valid_eval_route(case: dict[str, Any]) -> bool:
+    route = case.get("route")
+    if case["expected"] == "do-not-select":
+        return route is None
+    if not isinstance(route, dict):
+        return False
+    operation = route.get("operation")
+    network_modes = {
+        "generate": {"offline", "live"},
+        "edit": {"offline", "live"},
+        "review": {"offline"},
+        "compile": {"offline"},
+        "diagnose": {"offline"},
+        "probe": {"live"},
+        "blocked": {"none"},
+    }
+    return (
+        route.get("network") in network_modes.get(operation, ())
+        and route.get("transport") in {None, "cli", "mcp"}
+        and route.get("format") in {None, "png", "jpeg", "webp", "gif", "svg"}
+        and (not route.get("dry_run") or route.get("network") == "offline")
+    )
 
 
 def main() -> int:

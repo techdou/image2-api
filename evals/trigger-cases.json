@@ -3,79 +3,224 @@
   "version": "1.6.0",
   "cases": [
     {
-      "id": "positive-relay-generation",
+      "id": "relay-png",
+      "split": "development",
       "expected": "select",
-      "prompt": "用我配置的 OpenAI 兼容三方 API 和 gpt-image-2 生成一张开源项目头图。"
+      "prompt": "用我配好的生图中转出一张开源项目头图，先出一张看整体效果。",
+      "route": {
+        "operation": "generate",
+        "network": "live",
+        "format": "png"
+      }
     },
     {
-      "id": "positive-model-alias",
+      "id": "exact-model",
+      "split": "development",
       "expected": "select",
-      "prompt": "供应商把 GPT Image 2 写成 image-2，请配置 model family 并调用 /v1/images/generations。"
+      "prompt": "Generate a travel-poster concept using gpt-image-2.6-flare.",
+      "route": {
+        "operation": "generate",
+        "network": "live",
+        "format": "png",
+        "model": "gpt-image-2.6-flare"
+      }
     },
     {
-      "id": "positive-prompt-review",
+      "id": "prompt-review",
+      "split": "development",
       "expected": "select",
-      "prompt": "严格 review 这段准备发给 GPT Image 2 API 的 prompt，并修复不符合规范的部分。"
+      "prompt": "下面这段要发给我的生图 API，先严格审查，别调用 API：海报上写“风从海上来”。",
+      "route": {
+        "operation": "review",
+        "network": "offline",
+        "transport": "cli"
+      }
     },
     {
-      "id": "positive-edit-mask",
+      "id": "masked-edit",
+      "split": "development",
       "expected": "select",
-      "prompt": "通过 Images edits API 使用两张参考图和一个 PNG mask，只修改衣服并保持人物身份。"
+      "prompt": "用 Images edits API，按顺序传主图、人物参考图和 PNG 蒙版，只修改衣服。",
+      "route": {
+        "operation": "edit",
+        "network": "live",
+        "format": "png"
+      }
     },
     {
-      "id": "positive-dry-run",
+      "id": "gif-dry-run",
+      "split": "development",
       "expected": "select",
-      "prompt": "将需求编译成 GPT Image 2 prompt，针对我的 relay 做 dry-run，不要实际扣费。"
+      "prompt": "用 GPT Image 2.6 的 Images API 检查 9 帧循环动图请求，每帧 180ms，先别扣费。",
+      "route": {
+        "operation": "generate",
+        "network": "offline",
+        "format": "gif",
+        "dry_run": true
+      }
     },
     {
-      "id": "positive-gif-generate",
+      "id": "svg-native",
+      "split": "development",
       "expected": "select",
-      "prompt": "用 gpt-image-2.6-flare 的 Images API 生一张 9 帧的循环 GIF，吉祥物挥完手回到起始姿势。"
+      "prompt": "用 image2-api 直接生成可编辑路径的咖啡品牌 SVG 标志。",
+      "route": {
+        "operation": "generate",
+        "network": "live",
+        "format": "svg"
+      }
     },
     {
-      "id": "positive-gif-edit",
+      "id": "config-diagnosis",
+      "split": "development",
       "expected": "select",
-      "prompt": "用我配置的 image2-api MCP，把这张产品图作为参考生成原生 GIF。"
+      "prompt": "我的生图中转好像把模型别名配错了，帮我核对本地配置，先不发请求。",
+      "route": {
+        "operation": "diagnose",
+        "network": "offline"
+      }
     },
     {
-      "id": "positive-svg-export",
-      "expected": "select",
-      "prompt": "用 image2-api 的 GPT Image 2.6 把 Logo 直接生成原生 SVG，路径和颜色要可编辑。"
-    },
-    {
-      "id": "negative-gif-convert",
+      "id": "existing-frames",
+      "split": "development",
       "expected": "do-not-select",
-      "prompt": "把已经导出的 10 张 PNG 按顺序拼成 GIF。"
+      "prompt": "把已经导出的 10 张 PNG 按顺序拼成循环 GIF，每帧 200 ms。"
     },
     {
-      "id": "negative-built-in-draw",
+      "id": "host-draw",
+      "split": "development",
       "expected": "do-not-select",
-      "prompt": "帮我画一只可爱的猫。"
+      "prompt": "帮我画只戴橙色围巾的猫，给我一张 PNG。"
     },
     {
-      "id": "negative-presentation-image",
+      "id": "host-edit",
+      "split": "development",
       "expected": "do-not-select",
-      "prompt": "给我的汇报生成一张机制图。"
+      "prompt": "把这张证件照的背景改成白色，保留原来的人脸和发型。"
     },
     {
-      "id": "negative-image-analysis",
+      "id": "vector-convert",
+      "split": "development",
       "expected": "do-not-select",
-      "prompt": "分析我上传照片里的构图问题。"
+      "prompt": "把现有的 logo.png 转成可编辑的 SVG，形状尽量不变。"
     },
     {
-      "id": "negative-theory",
+      "id": "deterministic-diagram",
+      "split": "development",
       "expected": "do-not-select",
-      "prompt": "解释扩散模型为什么能生成图片。"
+      "prompt": "按这份确定的节点关系绘制 Mermaid 架构图，并导出 SVG。"
     },
     {
-      "id": "negative-web-app",
+      "id": "model-discussion",
+      "split": "development",
       "expected": "do-not-select",
-      "prompt": "用 React 做一个图片画廊网页。"
+      "prompt": "GPT Image 2.6 Flare 和 Sunburst 有什么区别？只解释适用场景。"
     },
     {
-      "id": "ambiguous-generate",
+      "id": "continued-api",
+      "split": "holdout",
+      "expected": "select",
+      "prompt": "同上，再出一张横版，文字还是用中文。",
+      "context": "上一轮通过用户选定的 image2-api 中转生成了竖版海报。",
+      "route": {
+        "operation": "generate",
+        "network": "live",
+        "format": "png"
+      }
+    },
+    {
+      "id": "reference-gif",
+      "split": "holdout",
+      "expected": "select",
+      "prompt": "Use my configured image2-api MCP to animate /tmp/product.png into a looping GIF.",
+      "route": {
+        "operation": "edit",
+        "network": "live",
+        "format": "gif"
+      }
+    },
+    {
+      "id": "svg-reference-conflict",
+      "split": "holdout",
+      "expected": "select",
+      "prompt": "用 image2-api 根据我上传的 Logo 原图原样输出 SVG，必须保留轮廓。",
+      "route": {
+        "operation": "blocked",
+        "network": "none",
+        "format": "svg"
+      }
+    },
+    {
+      "id": "structured-brief",
+      "split": "holdout",
+      "expected": "select",
+      "prompt": "把 examples/briefs/logo-mark.json 编译成我的生图中转能用的提示词，先只交 prompt。",
+      "route": {
+        "operation": "compile",
+        "network": "offline",
+        "transport": "cli"
+      }
+    },
+    {
+      "id": "transparent-edit",
+      "split": "holdout",
+      "expected": "select",
+      "prompt": "用我的生图 API，把产品图去背景并导出透明 PNG，边缘保留细节。",
+      "route": {
+        "operation": "edit",
+        "network": "live",
+        "format": "png",
+        "transport": "cli"
+      }
+    },
+    {
+      "id": "live-probe",
+      "split": "holdout",
+      "expected": "select",
+      "prompt": "帮我实际请求一次生图中转做连通性测试，最低画质就行。",
+      "route": {
+        "operation": "probe",
+        "network": "live",
+        "format": "png",
+        "transport": "cli"
+      }
+    },
+    {
+      "id": "continued-host",
+      "split": "holdout",
       "expected": "do-not-select",
-      "prompt": "帮我生图。"
+      "prompt": "同上，再出一张横版，文字还是用中文。",
+      "context": "上一轮通过应用内置生图功能生成了竖版海报，用户没有选择 API 或中转。"
+    },
+    {
+      "id": "gif-no-channel",
+      "split": "holdout",
+      "expected": "do-not-select",
+      "prompt": "给我的头像做一个挥手的循环 GIF，表情自然点。"
+    },
+    {
+      "id": "svg-no-channel",
+      "split": "holdout",
+      "expected": "do-not-select",
+      "prompt": "画个简洁的几何 Logo，给我可编辑的 SVG 源码。"
+    },
+    {
+      "id": "png-export",
+      "split": "holdout",
+      "expected": "do-not-select",
+      "prompt": "把这份现成的 SVG 导出 1024px 的 PNG，内容不变。"
+    },
+    {
+      "id": "ocr",
+      "split": "holdout",
+      "expected": "do-not-select",
+      "prompt": "帮我把上传的发票图片识别成文字，保留金额和日期。"
+    },
+    {
+      "id": "api-docs-only",
+      "split": "holdout",
+      "expected": "do-not-select",
+      "prompt": "Explain the GIF request fields in /v1/images/generations. I only need a docs summary."
     }
   ]
 }

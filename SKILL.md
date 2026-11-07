@@ -1,56 +1,37 @@
 ---
 name: image2-api
-description: "This skill should be used for image generation, editing, animated GIF creation, or native SVG generation with the OpenAI-compatible Images API or a configured relay. Trigger on GPT Image API models such as gpt-image-2.6-flare, gpt-image-2.6-sunburst and gpt-image-2, /v1/images/generations or /v1/images/edits, API prompt review, relay base URL setup, reference images and mask workflows. Prefer the registered image2-api MCP server when this channel is requested or established. Do not select for ordinary built-in image generation, OCR, or file format conversion."
+description: "Generate or edit images through the OpenAI-compatible Images API, a GPT Image relay, or image2-api MCP. Use when the user names this API, an exact API model, or a relay, or continues an established image API workflow. Supports native GIF, editable SVG, API prompt review, dry runs, and provider diagnostics. Leave ordinary built-in image generation, local conversion, and deterministic diagrams to their usual tools."
+license: MIT
 metadata:
   version: "1.6.0"
-  compatibility: "Python 3.10+ with requirements.txt. Optional MCP server requires mcp>=1.29,<3. Live image calls require provider access and credentials."
 ---
 
 # Image 2 API
 
-## Choose the operation
+## Route the request
 
-| Task | MCP tool | CLI |
+Use this workflow when the user invokes the skill, requests an image API or relay, or refers back to an established image API workflow. The presence of an installed MCP server alone does not establish that workflow. See [routing examples](references/agent-routing.md) for ambiguous requests and format constraints.
+
+| Intent | Tool on the registered `image2-api` server | CLI from the skill root |
 |---|---|---|
-| Generate from text | `generate_image` | `python scripts/generate_image.py` |
-| Edit, composite, or animate still references | `edit_image` | `python scripts/edit_image.py` |
-| Review a prompt offline | `check_prompt` | `python scripts/prompt_doctor.py` |
-| Diagnose the configured API | `diagnose_api` | `python scripts/doctor.py` |
+| Generate an image from text | `generate_image` | `python scripts/generate_image.py` |
+| Edit an image or generate with visual references | `edit_image` | `python scripts/edit_image.py` |
+| Review an existing prompt offline | `check_prompt` | `python scripts/prompt_doctor.py` |
+| Compile a structured brief | | `python scripts/build_prompt.py` |
+| Inspect provider configuration offline | `diagnose_api` | `python scripts/doctor.py` |
 
-Use the registered MCP tool when available. Use the CLI for unregistered clients, structured brief compilation, or request options the tool does not expose. Run scripts from the skill root or use absolute paths. See [integration](references/integration.md) for installation and [agent routing](references/agent-routing.md) for activation examples.
+Use the matching tool on the registered `image2-api` server when available. Use the CLI if that server is unavailable or the request needs options the tool does not expose, such as strict prompt review or transparent edits. Keep any transport the user explicitly requires. Check the tool schema or script `--help` before adding optional arguments. See [setup and requirements](references/integration.md).
 
-## Choose the model and provider
+## Choose format and model
 
-- Use `gpt-image-2.6-flare` for fast iteration and `gpt-image-2.6-sunburst` for detailed work or precise edits. Honor a model explicitly requested by the user.
-- Use `gpt-image-2.6` as the capability family for relay aliases backed by 2.6. The official IDs are recognized automatically. Existing 2.5, 2 and other relay configurations continue to use their configured model.
-- Configure the key, base URL, model and family in the environment or an untracked `.env`. For multiple providers, define `IMAGE_API_PROVIDERS` and provider-specific settings. Read [API compatibility](references/api-compatibility.md) for endpoint overrides and fallback.
-- Keep keys and signed URLs out of prompts, command arguments, logs and artifacts.
+- **Still image.** Use the configured image model and default PNG. Preserve a model or format the user explicitly requests. For transparency, use PNG or WebP with `background=transparent`.
+- **GIF.** Select `output_format=gif` with a GIF-capable GPT Image 2.6 provider. Use generate for text-only requests and edit for still references. Describe the motion and loop. Pass `frame_count` and `frame_duration_ms` when timing matters. GIF edits take references without a mask. Start with `size=auto` unless dimensions are specified.
+- **SVG.** Select `output_format=svg` only for an explicit SVG or editable vector deliverable in this API workflow. Use GPT Image 2.6 with generate and one output. If a source image must drive the result, surface the SVG edit limitation before generating. Keep the user's source and output requirements intact.
+- **Model selection.** Use `gpt-image-2.6-flare` for fast iteration and `gpt-image-2.6-sunburst` for detailed work when a 2.6 model is needed and the provider supports it. For a relay alias, set the documented capability family. See [request parameters and examples](references/api-compatibility.md).
 
 ## Prepare and execute
 
-For ordinary image requests, call the configured image generation or editing model and keep the default PNG output. Choose SVG only when the user explicitly asks for SVG or an editable vector deliverable.
-
-1. Confirm deliverable, format, size, references and their order. For edits, identify the primary image first and state which details to preserve before describing the changes. For exact text, quote the copy and specify its position. Use PNG or WebP with `background=transparent` for alpha output.
-2. For complex jobs, compile a brief with `python scripts/build_prompt.py`. Read the [brief schema](references/prompt-brief-schema.md), [prompt guide](references/gpt-image-prompt-guide.md), or [recipes](references/prompt-recipes.md) as needed.
-3. Review the prompt and dry-run unfamiliar requests with `--dry-run --json` or MCP `dry_run=true`. Check the selected endpoint, provider model, format, parameters and local warnings. Use strict prompt review for production templates and exact text.
-4. Execute with a quality suited to the task. Inspect the resulting files for prompt adherence, visible artifacts and reference preservation. Return the file paths, run directory and material warnings. Use [troubleshooting](references/troubleshooting.md) for errors.
-
-## Animated GIFs
-
-Use GPT Image 2.6 with `output_format=gif`. For text-to-GIF, use generate. To animate a still image, use edit with one or more PNG, JPEG or WebP reference images. Describe the starting pose, one clear motion, camera movement if needed, and how the subject returns to the starting pose.
-
-Set `frame_count` (2–16, default 9) and `frame_duration_ms` (20–2000, default 200) when timing matters. Start with `size=auto` so the provider can fit the frame dimensions and count to its pixel budget. GIF requests require a provider that exposes animated output and exclude masks, streaming, partial images and custom compression.
-
-```bash
-python scripts/generate_image.py \
-  --model gpt-image-2.6-flare --output-format gif \
-  --prompt "A coffee-bean mascot waves once, lowers its hand to the initial pose, and loops smoothly. Fixed camera and background." \
-  --frame-count 9 --frame-duration-ms 200 --dry-run --json
-```
-
-After checking the request, remove `--dry-run` to submit it. For MCP, use the same parameter names with underscores. Inspect motion and the loop seam in a GIF-capable viewer. The CLI saves the original multi-frame bytes and records the decoded frame count in `metadata.json`. See [GIF request rules and examples](references/api-compatibility.md#animated-gif-output).
-
-
-## Native SVG
-
-For an explicit SVG export, use GPT Image 2.6 with `generate_image` and `output_format=svg` (`--output-format svg` in the CLI). Use one output per request and prompt for editable shapes, paths, and colors. Native SVG uses the generation endpoint. Route edits with image inputs through the raster edit workflow and tell the user about the format constraint when needed. Read the [SVG request rules and example](references/api-compatibility.md#native-svg-output).
+1. Confirm the intended deliverable and material constraints. For edits, pass the primary canvas first and state what to preserve. Keep literal image text in the requested language. Use the [prompt guide](references/gpt-image-prompt-guide.md), [recipes](references/prompt-recipes.md), or [brief schema](references/prompt-brief-schema.md) only as needed.
+2. Keep prompt-only, configuration inspection, and dry-run requests offline. A dry run uses MCP `dry_run=true` or CLI `--dry-run --json`, writes a local request plan, and returns no image. Use it before live generation when the provider, alias, endpoint or format is unfamiliar.
+3. Submit a live request when the user asks for actual generation or editing through this workflow. Keep credentials out of prompts, arguments, and output. Use `doctor.py --probe` only for a requested live probe. CLI `--test` is a live low-quality call.
+4. Return actual output paths, the run directory, and relevant warnings. Report dry runs as validation. If a batch partly succeeds, report saved paths and the failure. Check the result before repeating a live request through another transport. Use [troubleshooting](references/troubleshooting.md) as needed.

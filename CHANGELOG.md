@@ -4,7 +4,7 @@
 
 - Added GPT Image 2.6 Flare and Sunburst recognition for CLI and MCP, with opt-in native SVG export and PNG as the default.
 - Added native animated GIF generation and still-reference animation, with frame controls, bounded multi-frame verification, format-aware fallback and partial-result reporting. Default run directories are unique for concurrent calls.
-- Aligned skill activation, version metadata and trigger fixtures. Added Codex interface metadata and MCP Python SDK 1.x and 2.x compatibility.
+- Clarified API-only activation, MCP and CLI routing, and offline versus live diagnostics. Added Codex interface metadata, selection and routing fixtures, and MCP Python SDK 1.x and 2.x compatibility.
 
 ## 1.5.0 - 2026-10-26
 
