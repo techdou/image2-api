@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image 2 API"
+  short_description: "Generate PNG, GIF, and SVG via your image API"
+  default_prompt: "Use $image2-api to generate a PNG image through my configured Images API."

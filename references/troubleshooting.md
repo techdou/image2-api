@@ -28,7 +28,7 @@
 If you configured `IMAGE_API_PROVIDERS` and every provider was exhausted:
 
 - The error message lists each provider's last status code and reason, e.g.
-  `All 2 providers failed [fenno -> backup]: fenno(HTTP 503): ...; backup(HTTP 401): ...`.
+  `All 2 providers failed [primary -> backup]: primary(HTTP 503): ...; backup(HTTP 401): ...`.
 - A 401/403 from one provider means the key/permission for that provider is
   wrong — fix the key in `.env` rather than adding more fallback providers.
 - A 503/429 from every provider indicates a regional outage or quota

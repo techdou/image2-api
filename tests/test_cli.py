@@ -37,7 +37,8 @@ class CLITests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stderr)
             payload = json.loads(proc.stdout)
             self.assertTrue(payload["ok"])
-            self.assertTrue((run_dir / "request.json").is_file())
+            request = json.loads((run_dir / "request.json").read_text(encoding="utf-8"))
+            self.assertEqual(request["requests"][0]["output_format"], "png")
             self.assertTrue((run_dir / "prompt_review.json").is_file())
 
     def test_prompt_doctor_strict_fails_on_warning(self):
@@ -134,6 +135,51 @@ class CLITests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
         self.assertTrue(payload["ok"])
+
+    def test_gif_rejects_incompatible_options(self):
+        cases = [
+            (["--model", "gpt-image-2.5-flare"], "GIF output requires GPT Image 2.6"),
+            (["--frame-count", "17"], "frame_count must be"),
+            (["--frame-duration-ms", "19"], "frame_duration_ms must be"),
+            (["--output-compression", "50"], "only valid for jpeg or webp"),
+            (["--extra-param", "stream=true"], "cannot override standard request fields"),
+        ]
+        for flags, message in cases:
+            with self.subTest(flags=flags):
+                result = subprocess.run(
+                    [
+                        sys.executable, str(ROOT / "scripts/generate_image.py"),
+                        "--prompt", "Animate a loop.", "--model", "gpt-image-2.6-sunburst",
+                        "--output-format", "gif", "--dry-run", "--json", *flags,
+                    ],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(message, json.loads(result.stdout)["error"])
+
+    def test_svg_is_generation_only_and_validates_request_constraints(self):
+        cases = [
+            ("generate", ["--count", "2"], "Set count to 1"),
+            ("generate", ["--model", "gpt-image-2.5-flare"], "SVG output requires GPT Image 2.6"),
+            ("generate", ["--extra-param", "partial_images=1"], "cannot override standard request fields"),
+            ("edit", ["--image", "source.png"], "invalid choice"),
+        ]
+        for operation, flags, message in cases:
+            with self.subTest(operation=operation, flags=flags):
+                result = subprocess.run(
+                    [
+                        sys.executable, str(ROOT / f"scripts/{operation}_image.py"),
+                        "--prompt", "Draw an editable vector mark.", "--model", "gpt-image-2.6-sunburst",
+                        "--output-format", "svg", "--dry-run", "--json", *flags,
+                    ],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout or result.stderr)
 
     def test_extra_param_cannot_override_prompt(self):
         proc = subprocess.run(

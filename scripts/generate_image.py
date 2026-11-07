@@ -4,16 +4,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
-from image2lib.client import ImageAPIClient, ImageAPIError, entry_to_bytes, extract_image_entries
-from image2lib.capabilities import QUALITY_CHOICES
+from image2lib.client import ImageAPIClient, ImageAPIError
+from image2lib.capabilities import OUTPUT_FORMATS, QUALITY_CHOICES
 from image2lib.config import APIConfig, MODEL_FAMILIES
-from image2lib.outputs import RunOutput, extension_for_format
+from image2lib.jobs import save_image_results
+from image2lib.outputs import RunOutput
 from image2lib.prompting import PROFILES, lint_prompt, read_prompt
 from image2lib.utils import merge_extra_params
-from image2lib.validation import validate_generation_options, validate_image_bytes
+from image2lib.validation import validate_generation_options
 
 
 def parser() -> argparse.ArgumentParser:
@@ -31,10 +31,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--prompt-lint", default="warn", choices=["off", "warn", "strict"], help="Review prompt quality before the API call.")
     p.add_argument("--base-url", help="API base URL override, normally ending in /v1.")
     p.add_argument("--endpoint", help="Full generation endpoint override.")
-    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2/2.5: edges <=3840px, multiples of 16, ratio <=3:1. 4K landscape: 3840x2160, 4K portrait: 2160x3840.")
+    p.add_argument("--size", help="auto or WIDTHxHEIGHT. Defaults to auto for GIF/SVG and 2048x2048 for still raster images.")
     p.add_argument("--quality", default="high", choices=QUALITY_CHOICES)
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
-    p.add_argument("--output-format", default="png", choices=["png", "jpeg", "webp"])
+    p.add_argument("--output-format", default="png", choices=OUTPUT_FORMATS)
+    p.add_argument("--frame-count", type=int, help="GIF only: 2-16 frames (upstream default: 9).")
+    p.add_argument("--frame-duration-ms", type=int, help="GIF only: 20-2000 ms per frame (upstream default: 200).")
     p.add_argument("--output-compression", type=int)
     p.add_argument("--moderation", default="auto", choices=["auto", "low"])
     p.add_argument("--count", type=int, default=1, help="Number of images, 1-10.")
@@ -73,6 +75,10 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
         "output_format": args.output_format,
         "moderation": args.moderation,
     }
+    if args.frame_count is not None:
+        payload["frame_count"] = args.frame_count
+    if args.frame_duration_ms is not None:
+        payload["frame_duration_ms"] = args.frame_duration_ms
     if args.output_compression is not None:
         payload["output_compression"] = args.output_compression
     return merge_extra_params(
@@ -81,12 +87,16 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
         reserved={
             "model", "prompt", "n", "size", "quality", "background",
             "output_format", "output_compression", "moderation",
+            "frame_count", "frame_duration_ms",
+            *({"stream", "partial_images"} if args.output_format in {"gif", "svg"} else ()),
         },
     )
 
 
 def main() -> int:
     args = parser().parse_args()
+    if args.size is None:
+        args.size = "auto" if args.output_format in {"gif", "svg"} else "2048x2048"
     if getattr(args, "test", False):
         args.quality = "low"
     try:
@@ -109,6 +119,8 @@ def main() -> int:
             output_format=args.output_format,
             output_compression=args.output_compression,
             count=args.count,
+            frame_count=args.frame_count,
+            frame_duration_ms=args.frame_duration_ms,
         )
         prompt_review = None
         if args.prompt_lint != "off":
@@ -152,42 +164,24 @@ def main() -> int:
             return 0
 
         client = ImageAPIClient(config)
-        responses: list[dict[str, Any]] = []
-        image_metadata: list[dict[str, Any]] = []
-        saved_paths: list[str] = []
-        output_index = 1
-
-        for payload in planned_payloads:
-            api_result = client.generate(payload)
-            responses.append(api_result.safe_summary())
-            for entry in extract_image_entries(api_result.payload):
-                data = entry_to_bytes(client, entry)
-                path = run.image_path(output_index, args.output_format, total=args.count)
-                info = validate_image_bytes(data, path.name)
-                actual_ext = extension_for_format(info.format)
-                if path.suffix.lower() != actual_ext:
-                    path = path.with_suffix(actual_ext)
-                path.write_bytes(data)
-                info.filename = path.name
-                image_metadata.append(info.to_dict())
-                saved_paths.append(str(path))
-                output_index += 1
-
-        run.write_response_summary({"responses": responses})
-        run.write_metadata(
-            {
+        result = save_image_results(
+            run,
+            client,
+            (client.generate(payload) for payload in planned_payloads),
+            output_format=args.output_format,
+            count=args.count,
+            metadata={
                 "operation": "generate",
                 "model": config.model,
-                "image_count": len(saved_paths),
-                "images": image_metadata,
                 "prompt_review": prompt_review.to_dict() if prompt_review else None,
                 "warnings": warnings,
-            }
+            },
         )
-        removed = run.cleanup_intermediates()
-        if removed and not args.json:
-            print(f"Cleaned intermediate files: {', '.join(removed)}", file=sys.stderr)
-        result = {"ok": True, "run_dir": str(run.path), "images": saved_paths, "warnings": warnings}
+        if result["ok"]:
+            removed = run.cleanup_intermediates()
+            if removed and not args.json:
+                print(f"Cleaned intermediate files: {', '.join(removed)}", file=sys.stderr)
+        saved_paths = result["images"]
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
@@ -197,7 +191,9 @@ def main() -> int:
             print(f"Run directory: {run.path}")
             for warning in warnings:
                 print(f"Warning: {warning}", file=sys.stderr)
-        return 0
+            if not result["ok"]:
+                print(f"Error: {result['error']}", file=sys.stderr)
+        return 0 if result["ok"] else 1
     except (ValueError, OSError, ImageAPIError) as exc:
         if args.json:
             print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False, indent=2))

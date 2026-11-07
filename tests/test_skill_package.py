@@ -14,10 +14,10 @@ class SkillPackageTests(unittest.TestCase):
     def test_frontmatter_has_narrow_activation_boundary(self):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertRegex(text, r"(?m)^name: image2-api$")
-        self.assertIn("This skill should be used", text)
-        self.assertIn("Do not select", text)
-        self.assertIn("OpenAI-compatible", text)
-        self.assertIn("ordinary built-in image generation", text)
+        frontmatter = text.split("---", 2)[1]
+        self.assertIn("OpenAI-compatible Images API", frontmatter)
+        self.assertIn("established image API workflow", frontmatter)
+        self.assertIn("ordinary built-in image generation", frontmatter)
 
     def test_version_is_consistent(self):
         text = (ROOT / "SKILL.md").read_text(encoding="utf-8")

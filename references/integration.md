@@ -1,5 +1,9 @@
 # Agent integration
 
+## Execution requirements
+
+Use Python 3.10+ with the dependencies in `requirements.txt`. Live calls require network access and credentials for the selected provider. Prompt compilation and review, request dry runs, and local configuration inspection can run without network access.
+
 ## Installation locations
 
 - Standard user skill: `~/.agents/skills/image2-api/`
@@ -11,7 +15,7 @@ Use `scripts/install_skill.py`. The parent directory must remain `image2-api` be
 
 ## Selection behavior
 
-Load this skill for explicit API/relay work, not for every image request. See `agent-routing.md` and evaluate the frontmatter against `evals/trigger-cases.json` after changing the description.
+Load this skill for explicit or previously established image API work. See `agent-routing.md` for routing examples and `evals/trigger-cases.json` for evaluation cases.
 
 Recommended explicit invocation:
 
@@ -49,3 +53,8 @@ The Agent must distinguish a dry run from successful live generation.
 ## Progressive reference loading
 
 Load `SKILL.md` first. Open only one-level reference files needed for the current subtask. Avoid loading all prompt recipes, API notes, and troubleshooting material into context at once.
+
+
+## Optional MCP server
+
+Install `mcp>=1.29,<3` alongside the CLI dependencies. In an MCP client's stdio configuration, use the Python interpreter that has those dependencies as the command, and pass the absolute path to `mcp_server.py` as the only argument. Register the server under `image2-api`. Its generation and edit tools use the same provider configuration as the CLI.

@@ -90,6 +90,58 @@ class FallbackTests(unittest.TestCase):
         except StopIteration:
             pass
 
+    def test_gif_fallback_keeps_explicit_primary_model_and_skips_legacy_backup(self):
+        primary = _profile("primary", "https://primary.example.com/v1")
+        legacy = _profile("legacy", "https://legacy.example.com/v1")
+        backup = _profile("backup", "https://backup.example.com/v1")
+        backup.model = "sunburst-relay"
+        backup.model_family = "gpt-image-2.6"
+        config = _config_with_chain(primary, legacy, backup)
+        config.model = "gpt-image-2.6-flare"
+        config.model_family = "auto"
+        config.generations_url = "https://primary.example.com/custom"
+        client = ImageAPIClient(config)
+
+        with patch("image2lib.client.httpx.Client") as mock_client:
+            request = mock_client.return_value.__enter__.return_value.request
+            request.side_effect = [_mock_response(503), _mock_response(200)]
+            result = client.generate({"model": config.model, "output_format": "gif"})
+
+        self.assertEqual(result.provider_name, "backup")
+        first, second = request.call_args_list
+        self.assertEqual(first.args[1], config.generations_url)
+        self.assertEqual(first.kwargs["json"]["model"], config.model)
+        self.assertEqual(second.args[1], backup.generation_endpoint())
+        self.assertEqual(second.kwargs["json"]["model"], backup.model)
+
+    def test_format_access_errors_fall_back_but_invalid_requests_do_not(self):
+        primary = _profile("primary", "https://primary.example.com/v1")
+        backup = _profile("backup", "https://backup.example.com/v1")
+        for profile in (primary, backup):
+            profile.model_family = "gpt-image-2.6"
+        client = ImageAPIClient(_config_with_chain(primary, backup))
+        cases = [
+            ("gif", 403, {"message": "This project does not have access to GIF output."}, True),
+            ("gif", 400, {"code": "unsupported_output_format"}, True),
+            ("svg", 400, {"message": "SVG output is not supported by this provider."}, True),
+            ("gif", 400, {"message": "GIF frame_count must be 2 to 16."}, False),
+            ("gif", 400, {"message": "This size is not supported for GIF."}, False),
+            ("gif", 403, {"message": "Invalid API credentials."}, False),
+            ("png", 403, {"message": "This project does not have access to GIF output."}, False),
+        ]
+        for format_, status, error, fallback in cases:
+            with self.subTest(error=error, format=format_), patch("image2lib.client.httpx.Client") as mock_client:
+                request = mock_client.return_value.__enter__.return_value.request
+                request.side_effect = [_mock_response(status, {"error": error}), _mock_response(200)]
+                payload = {"model": "gpt-image-2.6-flare", "output_format": format_}
+                if fallback:
+                    self.assertEqual(client.generate(payload).provider_name, "backup")
+                    self.assertEqual(request.call_count, 2)
+                else:
+                    with self.assertRaises(ImageAPIError):
+                        client.generate(payload)
+                    self.assertEqual(request.call_count, 1)
+
     def test_no_fallback_on_400(self):
         config = _config_with_chain(
             _profile("primary", "https://primary.example.com/v1"),
@@ -333,10 +385,10 @@ class FallbackEnvConfigTests(unittest.TestCase):
 
     def test_parses_two_providers(self):
         env = {
-            "IMAGE_API_PROVIDERS": "fenno,backup",
-            "IMAGE_API_FENNO_BASE_URL": "https://api.fenno.ai/v1",
-            "IMAGE_API_FENNO_KEY": "sk-fenno",
-            "IMAGE_API_FENNO_MODEL": "gpt-image-2",
+            "IMAGE_API_PROVIDERS": "primary,backup",
+            "IMAGE_API_PRIMARY_BASE_URL": "https://primary.example.com/v1",
+            "IMAGE_API_PRIMARY_KEY": "test-primary-token",
+            "IMAGE_API_PRIMARY_MODEL": "gpt-image-2",
             "IMAGE_API_BACKUP_BASE_URL": "https://backup.example.com/v1",
             "IMAGE_API_BACKUP_KEY": "sk-backup",
         }
@@ -348,15 +400,15 @@ class FallbackEnvConfigTests(unittest.TestCase):
             os.environ.pop("IMAGE_API_MODEL", None)
             chain = ProviderChain.from_env()
             self.assertIsNotNone(chain)
-            self.assertEqual([p.name for p in chain.profiles], ["fenno", "backup"])
-            self.assertEqual(chain.profiles[0].api_key, "sk-fenno")
+            self.assertEqual([p.name for p in chain.profiles], ["primary", "backup"])
+            self.assertEqual(chain.profiles[0].api_key, "test-primary-token")
             self.assertEqual(chain.profiles[1].api_key, "sk-backup")
 
     def test_raises_when_provider_missing_base_url(self):
         env = {
-            "IMAGE_API_PROVIDERS": "fenno",
-            "IMAGE_API_FENNO_KEY": "sk-fenno",
-            # IMAGE_API_FENNO_BASE_URL deliberately missing
+            "IMAGE_API_PROVIDERS": "primary",
+            "IMAGE_API_PRIMARY_KEY": "test-primary-token",
+            # IMAGE_API_PRIMARY_BASE_URL deliberately missing
         }
         with patch.dict("os.environ", env, clear=False):
             with self.assertRaisesRegex(ValueError, "BASE_URL is not set"):
