@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import random
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,36 @@ from .utils import redact
 from .version import __version__
 
 _RETRY_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
+_FORMAT_UNAVAILABLE = re.compile(
+    r"unsupported|not supported|does not support|doesn't support|not enabled|disabled|not available|"
+    r"no access|does not have access|access denied|requires (?:preview )?access|not allowed|not entitled|entitlement required"
+)
+_FORMAT_ERROR_CODES = {
+    "unsupported_output_format", "output_format_not_supported",
+    "feature_not_enabled", "feature_not_available", "feature_access_denied",
+}
+
+
+def _provider_lacks_output_format(status: int, payload: dict[str, Any], output_format: str) -> bool:
+    if status not in {400, 403} or output_format not in {"gif", "svg"}:
+        return False
+    error = payload.get("error")
+    details = error if isinstance(error, dict) else {}
+    message = str(details.get("message") or error or payload.get("message") or payload.get("detail") or "").lower()
+    code = str(details.get("code") or payload.get("code") or "").lower()
+    param = str(details.get("param") or payload.get("param") or "").lower()
+    if param and param != "output_format":
+        return False
+    if code in {"unsupported_output_format", "output_format_not_supported"}:
+        return True
+    format_named = bool(re.search(rf"\b{output_format}\b", message))
+    format_parameter = param == "output_format" or bool(re.search(r"\boutput[_ ]format\b", message))
+    if not (format_named or format_parameter):
+        return False
+    if code in _FORMAT_ERROR_CODES:
+        return True
+    request_option = re.search(r"\b(?:size|dimensions|frame[_ ]count|frame[_ ]duration|quality|compression|mask)\b", message)
+    return not request_option and bool(_FORMAT_UNAVAILABLE.search(message))
 
 
 class _ShouldFallback(Exception):
@@ -169,16 +200,17 @@ class ImageAPIClient:
         assert chain is not None
         attempts_log: list[dict[str, Any]] = []
         request_fields = kwargs.get("json") or kwargs.get("data") or {}
+        output_format = request_fields.get("output_format", "png")
         for index, configured_profile in enumerate(chain.profiles):
             profile = configured_profile if index else self.config.primary_profile
-            if request_fields.get("output_format") == "gif" and not model_capabilities(
+            if output_format in {"gif", "svg"} and not model_capabilities(
                 profile.model, profile.model_family
-            ).animated_gif:
+            ).supports_output_format(output_format):
                 attempts_log.append(
                     {
                         "provider": profile.name,
                         "status_code": None,
-                        "reason": "GIF unsupported by configured model family",
+                        "reason": f"{output_format.upper()} unsupported by configured model family",
                         "attempts": 0,
                     }
                 )
@@ -187,7 +219,9 @@ class ImageAPIClient:
             if index:
                 provider_url = profile.edit_endpoint() if "data" in kwargs else profile.generation_endpoint()
             try:
-                return self._try_one_provider(profile, method, provider_url, chain=chain, **kwargs)
+                return self._try_one_provider(
+                    profile, method, provider_url, chain=chain, output_format=output_format, **kwargs
+                )
             except _ShouldFallback as exc:
                 attempts_log.append(
                     {
@@ -216,6 +250,7 @@ class ImageAPIClient:
         url: str,
         *,
         chain: ProviderChain,
+        output_format: str,
         **kwargs: Any,
     ) -> APIResult:
         """Send the request to a single provider's endpoint with internal retries.
@@ -281,7 +316,9 @@ class ImageAPIClient:
                 if response.is_error:
                     payload = self._decode_json(response)
                     message = self._error_message(payload, response.status_code)
-                    if response.status_code in chain.fallback_status:
+                    if response.status_code in chain.fallback_status or _provider_lacks_output_format(
+                        response.status_code, payload, output_format
+                    ):
                         raise _ShouldFallback(
                             status_code=response.status_code,
                             reason=message,
@@ -403,5 +440,8 @@ def entry_to_bytes(client: ImageAPIClient, entry: dict[str, Any]) -> bytes:
             raise ImageAPIError("The image base64 payload is invalid.") from exc
     url = entry.get("url")
     if url:
-        return client.download(str(url))
+        try:
+            return client.download(str(url))
+        except httpx.HTTPError as exc:
+            raise ImageAPIError("The provider image download failed.") from exc
     raise ImageAPIError("Image entry has neither b64_json nor url.")

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from io import BytesIO
 from pathlib import Path
+from struct import error as StructError, unpack_from
 from typing import Any, Iterable
+from xml.etree import ElementTree
 
 from PIL import Image, UnidentifiedImageError
 
@@ -13,6 +16,18 @@ from .utils import sha256_bytes
 MAX_INPUT_IMAGES = 16
 MAX_INPUT_IMAGE_BYTES = 50 * 1024 * 1024
 MAX_MASK_BYTES = 50 * 1024 * 1024
+MAX_GIF_BYTES = 64 * 1024 * 1024
+MAX_GIF_FRAMES = 16
+MAX_GIF_EDGE = 3840
+MAX_GIF_FRAME_PIXELS = 8_294_400
+MAX_SVG_BYTES = 8 * 1024 * 1024
+SVG_NAMESPACE = "{http://www.w3.org/2000/svg}"
+_GIF_HEADERS = (b"GIF87a", b"GIF89a")
+_SVG_ACTIVE_ELEMENTS = {
+    "a", "animate", "animatecolor", "animatemotion", "animatetransform",
+    "discard", "feimage", "foreignobject", "handler", "image", "link", "script", "set",
+}
+_LOCAL_CSS_URL = re.compile(r"""url\(\s*(['"]?)#[\w.:-]+\1\s*\)""", re.IGNORECASE)
 
 
 @dataclass(slots=True)
@@ -37,30 +52,33 @@ class ImageInfo:
 def validate_image_bytes(
     data: bytes, filename: str = "image", *, require_animated_gif: bool = False
 ) -> ImageInfo:
-    if len(data) < 256 and not data.startswith((b"GIF87a", b"GIF89a")):
+    is_gif = data.startswith(_GIF_HEADERS)
+    if require_animated_gif and not is_gif:
+        raise ValueError(f"{filename}: expected a multi-frame GIF from the provider.")
+    frame_count = _inspect_gif_structure(data, filename) if is_gif else None
+    if require_animated_gif and (frame_count or 0) < 2:
+        raise ValueError(f"{filename}: expected a multi-frame GIF, got {frame_count} frame(s).")
+    if len(data) < 256 and not is_gif:
         raise ValueError(f"{filename}: returned image is implausibly small ({len(data)} bytes).")
     prefix = data[:256].lstrip().lower()
     if prefix.startswith(b"<html") or prefix.startswith(b"<!doctype html"):
         raise ValueError(f"{filename}: the API returned an HTML page instead of an image.")
-    frame_count = None
     try:
         with Image.open(BytesIO(data)) as image:
             image.verify()
+        # Pillow verify() invalidates its image handle. Decode on a fresh handle.
         with Image.open(BytesIO(data)) as image:
+            fmt = (image.format or "unknown").lower()
             image.load()
             width, height = image.size
-            fmt = (image.format or "unknown").lower()
             mode = image.mode
             has_alpha = "A" in image.getbands() or "transparency" in image.info
-            if fmt == "gif":
-                frame_count = image.n_frames
+            if frame_count is not None:
                 for index in range(1, frame_count):
                     image.seek(index)
                     image.load()
-    except (UnidentifiedImageError, OSError, EOFError) as exc:
+    except (UnidentifiedImageError, OSError, EOFError, Image.DecompressionBombError) as exc:
         raise ValueError(f"{filename}: invalid or corrupted image bytes: {exc}") from exc
-    if require_animated_gif and (frame_count is None or frame_count < 2):
-        raise ValueError(f"{filename}: expected a multi-frame GIF, got {fmt} with {frame_count or 1} frame(s).")
     if fmt != "gif" and (width < 64 or height < 64):
         raise ValueError(f"{filename}: image dimensions are too small: {width}x{height}.")
     return ImageInfo(
@@ -74,6 +92,97 @@ def validate_image_bytes(
         has_alpha=has_alpha,
         frame_count=frame_count,
     )
+
+
+def _inspect_gif_structure(data: bytes, filename: str) -> int:
+    """Bound the GIF canvas and count frame descriptors before Pillow decodes pixels."""
+    if len(data) > MAX_GIF_BYTES:
+        raise ValueError(f"{filename}: GIF exceeds the 64 MiB response limit.")
+    try:
+        width, height, flags = unpack_from("<HHB", data, 6)
+        _check_gif_frame_size((width, height), filename)
+        offset = 13 + _gif_color_table_bytes(flags)
+        frames = 0
+        while True:
+            marker = data[offset]
+            offset += 1
+            if marker == 0x3B and frames:
+                return frames
+            if marker == 0x2C:
+                left, top, frame_width, frame_height, flags = unpack_from("<HHHHB", data, offset)
+                _check_gif_frame_size((frame_width, frame_height), filename)
+                width, height = max(width, left + frame_width), max(height, top + frame_height)
+                _check_gif_frame_size((width, height), filename)
+                frames += 1
+                if frames > MAX_GIF_FRAMES:
+                    raise ValueError(f"{filename}: GIF exceeds {MAX_GIF_FRAMES} frames.")
+                offset += 10 + _gif_color_table_bytes(flags)  # descriptor and LZW code size
+            elif marker == 0x21:
+                offset += 1  # extension label
+            else:
+                break
+            while block_size := data[offset]:
+                offset += 1 + block_size
+            offset += 1
+    except (IndexError, StructError) as exc:
+        raise ValueError(f"{filename}: truncated GIF data.") from exc
+    raise ValueError(f"{filename}: invalid GIF frame data or trailer.")
+
+
+def _gif_color_table_bytes(flags: int) -> int:
+    return 3 * (2 << (flags & 7)) if flags & 0x80 else 0
+
+
+def _check_gif_frame_size(size: tuple[int, int], filename: str) -> None:
+    width, height = size
+    if not 0 < min(size) or max(size) > MAX_GIF_EDGE or width * height > MAX_GIF_FRAME_PIXELS:
+        raise ValueError(f"{filename}: GIF frame dimensions exceed local limits: {width}x{height}.")
+
+
+def validate_svg_bytes(data: bytes, filename: str) -> dict[str, Any]:
+    """Check a static SVG payload and describe its viewport without rasterizing it."""
+    if len(data) > MAX_SVG_BYTES:
+        raise ValueError(f"{filename}: SVG exceeds the 8 MiB response limit.")
+    try:
+        xml = data.decode("utf-8-sig")
+        if re.search(r"<!DOCTYPE|<!ENTITY|<\?(?!xml\s)", xml, re.IGNORECASE):
+            raise ValueError(f"{filename}: SVG contains a document type or processing instruction.")
+        root = ElementTree.fromstring(xml)
+    except (UnicodeDecodeError, ElementTree.ParseError) as exc:
+        raise ValueError(f"{filename}: expected a valid UTF-8 SVG document.") from exc
+    if root.tag != f"{SVG_NAMESPACE}svg":
+        raise ValueError(f"{filename}: expected an SVG document from the provider.")
+
+    for element in root.iter():
+        tag = element.tag.removeprefix(SVG_NAMESPACE).lower()
+        if not element.tag.startswith(SVG_NAMESPACE) or tag in _SVG_ACTIVE_ELEMENTS:
+            raise ValueError(f"{filename}: SVG contains an unsupported element: {tag}.")
+        for attr, value in element.attrib.items():
+            name = attr.rsplit("}", 1)[-1].lower()
+            if name.startswith("on") or name == "base" or (name == "href" and not value.strip().startswith("#")):
+                raise ValueError(f"{filename}: SVG contains an active attribute or external reference.")
+            if name == "style" or "(" in value or "\\" in value:
+                _check_svg_css(value, filename)
+        if tag == "style":
+            _check_svg_css("".join(element.itertext()), filename)
+
+    return {
+        "filename": filename,
+        "format": "svg",
+        "width": root.get("width"),
+        "height": root.get("height"),
+        "view_box": root.get("viewBox"),
+        "bytes": len(data),
+        "sha256": sha256_bytes(data),
+    }
+
+
+def _check_svg_css(value: str, filename: str) -> None:
+    # Only permit literal fragment URLs. Avoid CSS escapes, imports, and indirection.
+    value = re.sub(r"/\*.*?\*/", "", value, flags=re.DOTALL)
+    remaining = _LOCAL_CSS_URL.sub("", value)
+    if re.search(r"[@\\]|\b(?:url|src|image(?:-set)?|var)\s*\(", remaining, re.IGNORECASE):
+        raise ValueError(f"{filename}: SVG contains an unsupported CSS reference.")
 
 
 def _inspect_input_image(
@@ -176,8 +285,6 @@ def validate_generation_options(
     frame_duration_ms: int | None = None,
     has_mask: bool = False,
 ) -> list[str]:
-    import re
-
     warnings: list[str] = []
     caps = model_capabilities(model, model_family)
 
@@ -191,12 +298,17 @@ def validate_generation_options(
     output_format = output_format.lower()
     if output_format not in OUTPUT_FORMATS:
         raise ValueError(f"output_format must be one of: {', '.join(OUTPUT_FORMATS)}.")
+    if output_format == "svg":
+        if not caps.native_svg:
+            raise ValueError("SVG output requires GPT Image 2.6 Flare or Sunburst (or a relay alias declared as gpt-image-2.6).")
+        if count != 1:
+            raise ValueError("SVG output supports one image per request. Set count to 1.")
     if output_format == "gif":
         if not caps.animated_gif:
             raise ValueError("GIF output requires GPT Image 2.6 Flare or Sunburst (or a relay alias declared as gpt-image-2.6).")
         if has_mask:
             raise ValueError("GIF output does not support masks. Supply still reference images without a mask.")
-        if frame_count is not None and not 2 <= frame_count <= 16:
+        if frame_count is not None and not 2 <= frame_count <= MAX_GIF_FRAMES:
             raise ValueError("frame_count must be between 2 and 16.")
         if frame_duration_ms is not None and not 20 <= frame_duration_ms <= 2000:
             raise ValueError("frame_duration_ms must be between 20 and 2000.")

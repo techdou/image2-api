@@ -7,7 +7,7 @@ Select `image2-api` when the request explicitly involves one or more of the foll
 - an OpenAI-compatible Images API;
 - a third-party GPT Image relay or provider;
 - an Images API model such as `gpt-image-2.6-flare`, `gpt-image-2.6-sunburst` or a relay alias such as `image-2`;
-- native animated GIF output through the Images API or the configured image2-api MCP server;
+- native animated GIF or editable SVG output through the Images API or the configured image2-api MCP server;
 - a custom `base_url`, token, endpoint, request header, or provider parameter;
 - `/v1/images/generations` or `/v1/images/edits`;
 - compiling or reviewing a prompt specifically for an API call;
@@ -67,7 +67,7 @@ For “帮我写 GPT Image prompt”, select this skill when the prompt is inten
 
 ## Choose the operation
 
-- `generate`: no source image is required; create a new visual from text.
+- `generate` creates a new visual from text. Default to PNG. Select native SVG only for an explicit SVG or editable vector request.
 - `edit`: any source image, identity reference, style reference, mask, object transplant, localization, or composition is involved.
 - `prompt-only`: compile/review and stop before the network call.
 - `diagnostic`: validate configuration, endpoint behavior, or package compliance.

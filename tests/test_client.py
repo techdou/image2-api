@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from io import BytesIO
 from pathlib import Path
+from struct import pack_into
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -17,6 +19,7 @@ from image2lib.validation import (
     validate_input_image,
     validate_input_images,
     validate_mask_compatibility,
+    validate_svg_bytes,
 )
 
 
@@ -35,6 +38,52 @@ class ClientTests(unittest.TestCase):
         image.save(buf, format="PNG")
         info = validate_image_bytes(buf.getvalue(), "test.png")
         self.assertEqual((info.width, info.height), (128, 128))
+
+    def test_gif_is_reopened_and_all_valid_frames_are_decoded(self):
+        frames = [Image.new("RGB", (32, 32), color) for color in ("red", "blue")]
+        buffer = BytesIO()
+        frames[0].save(buffer, format="GIF", save_all=True, append_images=frames[1:])
+        data = buffer.getvalue()
+        info = validate_image_bytes(data, "test.gif", require_animated_gif=True)
+        self.assertEqual(info.frame_count, 2)
+        with self.assertRaisesRegex(ValueError, "truncated"):
+            validate_image_bytes(data[:-1], "test.gif", require_animated_gif=True)
+
+    def test_gif_limits_are_enforced_before_pillow_opens_the_payload(self):
+        frames = [Image.new("RGB", (16, 16), (index * 12, 0, 0)) for index in range(17)]
+        buffer = BytesIO()
+        frames[0].save(buffer, format="GIF", save_all=True, append_images=frames[1:])
+        data = buffer.getvalue()
+        oversized = bytearray(data)
+        pack_into("<H", oversized, 6, 3841)
+        with patch("image2lib.validation.Image.open") as open_image:
+            with self.assertRaisesRegex(ValueError, "16 frames"):
+                validate_image_bytes(data, "test.gif", require_animated_gif=True)
+            with self.assertRaisesRegex(ValueError, "frame dimensions"):
+                validate_image_bytes(bytes(oversized), "test.gif", require_animated_gif=True)
+            with patch("image2lib.validation.MAX_GIF_BYTES", len(data) - 1):
+                with self.assertRaisesRegex(ValueError, "response limit"):
+                    validate_image_bytes(data, "test.gif", require_animated_gif=True)
+            open_image.assert_not_called()
+
+    def test_svg_preserves_vector_viewport_and_rejects_active_content(self):
+        start = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 24">'
+        safe = start + '<style>.shape{fill:url(#gradient)}</style><path d="M 0 0 L 10 10" /></svg>'
+        info = validate_svg_bytes(safe.encode(), "test.svg")
+        self.assertEqual(info["view_box"], "0 0 48 24")
+        self.assertEqual(info["format"], "svg")
+        invalid = [
+            "<html/>",
+            '<!DOCTYPE svg [<!ENTITY sample "text">]>' + start + "</svg>",
+            '<?xml-stylesheet href="https://example.com/style.css"?>' + start + "</svg>",
+            start + '<script>alert(1)</script></svg>',
+            start + '<path onload="alert(1)"/></svg>',
+            start + '<use href="https://example.com/file.svg#icon"/></svg>',
+            start + '<style>path{fill:url(https://example.com/file.svg)}</style></svg>',
+        ]
+        for svg in invalid:
+            with self.subTest(svg=svg), self.assertRaises(ValueError):
+                validate_svg_bytes(svg.encode(), "test.svg")
 
     def test_valid_mask_pair(self):
         with tempfile.TemporaryDirectory() as tmp:

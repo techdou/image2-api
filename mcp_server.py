@@ -45,7 +45,7 @@ mcp = Server(
         "fallback). generate_image for text-to-image, edit_image for editing/composite/"
         "reference-guided work (declare invariants first in the prompt), check_prompt "
         "for free offline prompt review, diagnose_api for connectivity issues. "
-        "For animated GIFs, select a GPT Image 2.6 model and set output_format=gif."
+        "For native GIF or SVG output, explicitly select the format and a GPT Image 2.6 model."
     ),
 )
 
@@ -89,14 +89,18 @@ def _run(script: str, args: list[str], prompt: str | None = None) -> dict:
         if warnings:
             resp["warnings"] = warnings
         return resp
-    return {"ok": False, "error": (r.stderr or out or "unknown error")[:2000],
+    error = data.get("error") if isinstance(data, dict) else None
+    return {"ok": False, "error": (error or r.stderr or out or "unknown error")[:2000],
             "result": data}
 
 
 def _outdir(sub: str | None) -> str:
-    d = Path(sub).expanduser() if sub else DEFAULT_OUTPUT_ROOT / time.strftime("%Y%m%d_%H%M%S")
-    d.mkdir(parents=True, exist_ok=True)
-    return str(d.resolve())
+    if sub:
+        d = Path(sub).expanduser()
+        d.mkdir(parents=True, exist_ok=True)
+        return str(d.resolve())
+    DEFAULT_OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
+    return tempfile.mkdtemp(prefix=time.strftime("%Y%m%d_%H%M%S_"), dir=DEFAULT_OUTPUT_ROOT)
 
 
 def _request_options(
@@ -136,16 +140,16 @@ def generate_image(
     """AI 文生图（GPT Image 2.6 / 2.5 / 2，多 provider 自动 fallback）。
 
     prompt: 图像描述（英文效果最佳；复杂需求按 brief 结构写：主体/场景/风格/构图/画内文字）。
-    size: auto 或宽x高，如 1536x1024。静态图默认 2K 方图，GIF 默认 auto。
+    size: auto 或宽x高，如 1536x1024。静态位图默认 2K 方图，GIF 和 SVG 默认 auto。
     quality: low|medium|high|xhigh|max|auto；探索期 low/medium，成品再调高。
     count: 生成张数 1-10。
     background: auto|opaque|transparent（transparent 需 png/webp）。
-    output_format: png|jpeg|webp|gif。GIF 使用 GPT Image 2.6，编辑时提供静态参考图。
+    output_format: png|jpeg|webp|gif|svg。默认 png。显式选择 svg 时使用 GPT Image 2.6，count 必须为 1。
     model/model_family: 可选模型名与别名能力系列，默认使用已配置的 provider。
     frame_count/frame_duration_ms: GIF 帧数与单帧毫秒数。
     dry_run: 仅校验请求，跳过网络调用。
     prompt_profile: 任务画像（photorealistic/illustration/logo/ad/infographic/...），auto 自动判断。
-    output_dir: 输出目录（绝对或相对家目录），默认 ~/.agents/image2-api-output/<时间戳>/。
+    output_dir: 输出目录（绝对或相对家目录），默认 ~/.agents/image2-api-output/<时间戳_唯一后缀>/。
 
     返回 {ok, result: {images: [路径...], ...}, warnings?}；images 为生成文件的绝对路径。
     """

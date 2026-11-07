@@ -3,6 +3,7 @@ from __future__ import annotations
 import mimetypes
 import os
 from datetime import datetime
+from tempfile import mkdtemp
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ _FORMAT_EXTENSIONS = {
     "jpg": ".jpg",
     "webp": ".webp",
     "gif": ".gif",
+    "svg": ".svg",
 }
 
 
@@ -39,13 +41,13 @@ class RunOutput:
                 self.prefix = safe_slug(name, 60)
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            label = f"{timestamp}_{safe_slug(prompt[:80])}"
             if name:
-                slug = safe_slug(name, 60)
-                path = Path("output") / f"{slug}_{timestamp}"
-                self.prefix = slug
-            else:
-                path = Path("output") / f"{timestamp}_{safe_slug(prompt[:80])}"
-                self.prefix = safe_slug(prefix, 32)
+                self.prefix = safe_slug(name, 60)
+                label = f"{self.prefix}_{timestamp}"
+            root = Path("output")
+            root.mkdir(exist_ok=True)
+            path = Path(mkdtemp(prefix=f"{label}_", dir=root))
         self.path = path.resolve()
         self.path.mkdir(parents=True, exist_ok=True)
         (self.path / "prompt.txt").write_text(prompt.rstrip() + "\n", encoding="utf-8")
@@ -84,14 +86,14 @@ class RunOutput:
         Triggered by env var IMAGE_API_CLEAN_INTERMEDIATES=1/true/yes/on.
         Deletes prompt.txt, request.json, prompt_review.json,
         response_summary.json, metadata.json — anything that is not a
-        recognized image format. Keeps .jpg/.png/.webp/.jpeg/.gif/.bmp.
+        recognized image format. Keeps .jpg/.png/.webp/.jpeg/.gif/.svg/.bmp.
 
         Safe to call after a failed run too: just no-ops on missing files.
         Returns the list of removed filenames for logging.
         """
         if not _clean_intermediates_enabled():
             return []
-        image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+        image_extensions = set(_FORMAT_EXTENSIONS.values()) | {".jpeg", ".bmp"}
         removed: list[str] = []
         for child in self.path.iterdir():
             if not child.is_file():

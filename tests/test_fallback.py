@@ -114,6 +114,34 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(second.args[1], backup.generation_endpoint())
         self.assertEqual(second.kwargs["json"]["model"], backup.model)
 
+    def test_format_access_errors_fall_back_but_invalid_requests_do_not(self):
+        primary = _profile("primary", "https://primary.example.com/v1")
+        backup = _profile("backup", "https://backup.example.com/v1")
+        for profile in (primary, backup):
+            profile.model_family = "gpt-image-2.6"
+        client = ImageAPIClient(_config_with_chain(primary, backup))
+        cases = [
+            ("gif", 403, {"message": "This project does not have access to GIF output."}, True),
+            ("gif", 400, {"code": "unsupported_output_format"}, True),
+            ("svg", 400, {"message": "SVG output is not supported by this provider."}, True),
+            ("gif", 400, {"message": "GIF frame_count must be 2 to 16."}, False),
+            ("gif", 400, {"message": "This size is not supported for GIF."}, False),
+            ("gif", 403, {"message": "Invalid API credentials."}, False),
+            ("png", 403, {"message": "This project does not have access to GIF output."}, False),
+        ]
+        for format_, status, error, fallback in cases:
+            with self.subTest(error=error, format=format_), patch("image2lib.client.httpx.Client") as mock_client:
+                request = mock_client.return_value.__enter__.return_value.request
+                request.side_effect = [_mock_response(status, {"error": error}), _mock_response(200)]
+                payload = {"model": "gpt-image-2.6-flare", "output_format": format_}
+                if fallback:
+                    self.assertEqual(client.generate(payload).provider_name, "backup")
+                    self.assertEqual(request.call_count, 2)
+                else:
+                    with self.assertRaises(ImageAPIError):
+                        client.generate(payload)
+                    self.assertEqual(request.call_count, 1)
+
     def test_no_fallback_on_400(self):
         config = _config_with_chain(
             _profile("primary", "https://primary.example.com/v1"),

@@ -2,7 +2,7 @@
 
 [English](#english) | [中文](#中文导读)
 
-`image2-api` is an Agent Skill for generating and editing images through an OpenAI-compatible Images API or third-party GPT Image relay. It provides GPT Image 2.6 Flare and Sunburst, native animated GIF generation from text or still references, and capability checks for existing GPT Image relays.
+`image2-api` is an Agent Skill for generating and editing images through an OpenAI-compatible Images API or third-party GPT Image relay. It provides GPT Image 2.6 Flare and Sunburst, native animated GIF generation from text or still references, opt-in native SVG export, and capability checks for existing GPT Image relays.
 
 ---
 
@@ -27,7 +27,7 @@ python scripts/doctor.py
 python scripts/generate_image.py --prompt-file prompt.txt --dry-run --json
 ```
 
-**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · GPT Image 2.6 Flare/Sunburst · 原生 GIF · 结构化 brief → GPT Image prompt 编译 · prompt 审查 · capability-based 模型校验 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测 · stdio MCP server（4 tools）。
+**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · GPT Image 2.6 Flare/Sunburst · 原生 GIF · 按需导出 SVG · 结构化 brief → GPT Image prompt 编译 · prompt 审查 · capability-based 模型校验 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测 · stdio MCP server（4 tools）。
 
 **MCP 调用（可选）**：`pip install "mcp>=1.29,<3"` 后把 `mcp_server.py` 注册为 stdio server，即可在 ZCode 等 MCP 客户端直调 4 个 tools：`generate_image` / `edit_image` / `check_prompt`（离线体检）/ `diagnose_api`（连通诊断）。CLI 和 MCP 共用请求处理脚本，凭证由脚本从 `.env` 加载。详见下方 [MCP 使用说明](#run-as-an-mcp-server)。
 
@@ -47,7 +47,7 @@ Since 1.5.0 this skill also ships as an MCP server for explicitly requested or c
 - Image editing, localization, compositing, multiple references, and masks through `/images/edits`
 - Structured JSON brief → GPT Image creative-brief compilation
 - Prompt profiles and deterministic prompt review
-- GPT Image 2.6 Flare/Sunburst, native animated GIFs, and third-party model alias support through `IMAGE_API_MODEL_FAMILY`
+- GPT Image 2.6 Flare/Sunburst, native animated GIFs, opt-in SVG export, and third-party model alias support through `IMAGE_API_MODEL_FAMILY`
 - Capability-aware validation for quality, flexible sizes, transparency, and legacy parameter differences
 - Dry-run request validation before network execution
 - Base64 and URL response normalization
@@ -134,6 +134,18 @@ python scripts/generate_image.py --model gpt-image-2.6-flare --output-format gif
 ```
 
 Remove `--dry-run` after checking the request. To animate a still image, use `edit_image.py --image mascot.png` with the same GIF options. See [GIF request rules](references/api-compatibility.md#animated-gif-output).
+
+### Export a native SVG
+
+Ordinary requests still use the configured image model and produce PNG by default. For editable paths and shapes, explicitly select SVG in generation mode.
+
+```bash
+python scripts/generate_image.py --model gpt-image-2.6-sunburst --output-format svg \
+  --prompt "Draw a coffee-bean logo using simple editable paths and two flat colors." \
+  --dry-run --json
+```
+
+The CLI and MCP generation tool accept SVG for GPT Image 2.6, one file per request. See [SVG request rules](references/api-compatibility.md#native-svg-output).
 
 ## Compile a normalized prompt
 
@@ -296,7 +308,7 @@ Requires `mcp>=1.29,<3` (`pip install "mcp>=1.29,<3"`). Register as a stdio serv
 
 Tools: `generate_image` · `edit_image` (references/mask via `image_paths`/`mask_path`) · `check_prompt` (offline, free) · `diagnose_api` (read-only, keys never echoed).
 
-Design notes: thin subprocess wrapper over `scripts/*.py --json` (upgrades to the scripts flow through automatically); credentials stay in `.env` loaded by the scripts themselves; prompts go through a temp file to avoid Windows command-line length limits; size rules and input existence are validated locally before any API call; `readOnlyHint` annotations mark the two read-only tools. Default output root: `~/.agents/image2-api-output/<timestamp>/`. For GIFs, pass `model`, `output_format="gif"`, `frame_count`, and `frame_duration_ms` to either image tool. Use `dry_run=true` to validate locally.
+Design notes: thin subprocess wrapper over `scripts/*.py --json` (upgrades to the scripts flow through automatically); credentials stay in `.env` loaded by the scripts themselves; prompts go through a temp file to avoid Windows command-line length limits; size rules and input existence are validated locally before any API call; `readOnlyHint` annotations mark the two read-only tools. Default output root: `~/.agents/image2-api-output/<timestamp_unique-suffix>/`. For GIFs, pass `model`, `output_format="gif"`, `frame_count`, and `frame_duration_ms` to either image tool. Use `dry_run=true` to validate locally.
 
 ## Validate and test
 

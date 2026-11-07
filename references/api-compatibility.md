@@ -33,7 +33,7 @@ IMAGE_API_MODEL_FAMILY=gpt-image-2.6
 Allowed families:
 
 - `auto` — infer from recognized official model names;
-- `gpt-image-2.6` — Flare/Sunburst capabilities, including animated GIF and `xhigh|max`;
+- `gpt-image-2.6` — Flare/Sunburst capabilities, including animated GIF, native SVG and `xhigh|max`;
 - `gpt-image-2.5` — Flare/Sunburst capabilities, including `xhigh|max`;
 - `gpt-image-2` — GPT Image 2 capabilities;
 - `gpt-image-1.5` — earlier GPT Image family;
@@ -75,7 +75,27 @@ python scripts/edit_image.py --image mascot.png \
   --frame-count 6 --frame-duration-ms 160 --dry-run --json
 ```
 
-With MCP, pass `image_paths`, `model`, `output_format`, `frame_count`, `frame_duration_ms` and `dry_run` to `edit_image`. Both entry points preserve the original animation bytes and reject a still image or single-frame GIF returned for an animation request. Provider fallback only tries profiles configured for the 2.6 family when GIF is requested.
+With MCP, pass `image_paths`, `model`, `output_format`, `frame_count`, `frame_duration_ms` and `dry_run` to `edit_image`. Both entry points preserve the original animation bytes and reject a still image or single-frame GIF returned for an animation request. The CLI rejects GIF responses over 64 MiB, over 16 frames, or with frame or canvas dimensions exceeding 3840 px per edge or 8,294,400 pixels before decoding pixels.
+
+## Native SVG output
+
+Use GPT Image 2.6 Flare or Sunburst with `output_format=svg` on `POST /v1/images/generations`. The API uses the image model to produce a reference and returns an editable UTF-8 SVG document. A request accepts one image and excludes streaming, partial images and custom compression. The edits endpoint accepts raster inputs and returns raster output. Set the prompt's background requirements directly for vector artwork.
+
+```bash
+python scripts/generate_image.py --model gpt-image-2.6-sunburst --output-format svg \
+  --prompt "Design a coffee-bean mark with editable geometric paths, two solid fills and clear negative space." \
+  --dry-run --json
+```
+
+MCP uses `generate_image` with `output_format="svg"`. Omit the format to keep the default PNG output. The CLI saves the original SVG bytes, records its viewport metadata when present, and checks for common active elements and external references before saving. Use a vector editor or image viewer to inspect the file.
+
+See the [OpenAI SVG generation guide](https://developers.openai.com/api/docs/guides/image-generation#generate-svg-output).
+
+## Format-aware fallback and partial results
+
+GIF and SVG requests try profiles configured for GPT Image 2.6. A provider's explicit unsupported-format or missing-format-access error can advance the chain. Other 400/403 responses follow the normal fallback policy.
+
+When a later image in a batch fails, JSON reports `ok=false`, `partial=true`, the saved image paths and the run directory. The CLI exits with status 1 and retains response summary and metadata for the run.
 
 See the [OpenAI Image API guide](https://developers.openai.com/api/docs/guides/image-generation#generate-animated-gif-output).
 
@@ -87,7 +107,7 @@ For edit/reference workflows, the skill removes `input_fidelity` from GPT Image 
 
 ## Defaults and relay caveats
 
-The CLI uses `2048x2048` for still images, `auto` for GIF size, and `quality=high` for both. The configured default model remains `gpt-image-2` for backward compatibility with existing third-party relays; upgrading the skill does not assume that every relay already exposes Flare or Sunburst.
+The CLI uses `2048x2048` for still raster images, `auto` for GIF and SVG size, and `quality=high` for both. The configured default model remains `gpt-image-2` for backward compatibility with existing third-party relays; upgrading the skill does not assume that every relay already exposes Flare or Sunburst.
 
 Third-party relays may cap resolution, remap model aliases, ignore transparency, reject `xhigh|max`, or omit edit/mask support even when the request shape is OpenAI-compatible. Verify requested vs actual output dimensions in `metadata.json`.
 

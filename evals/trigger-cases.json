@@ -38,6 +38,11 @@
       "prompt": "用我配置的 image2-api MCP，把这张产品图作为参考生成原生 GIF。"
     },
     {
+      "id": "positive-svg-export",
+      "expected": "select",
+      "prompt": "用 image2-api 的 GPT Image 2.6 把 Logo 直接生成原生 SVG，路径和颜色要可编辑。"
+    },
+    {
       "id": "negative-gif-convert",
       "expected": "do-not-select",
       "prompt": "把已经导出的 10 张 PNG 按顺序拼成 GIF。"

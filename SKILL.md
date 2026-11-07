@@ -1,6 +1,6 @@
 ---
 name: image2-api
-description: "This skill should be used for image generation, editing, or animated GIF creation with the OpenAI-compatible Images API or a configured relay. Trigger on GPT Image API models such as gpt-image-2.6-flare, gpt-image-2.6-sunburst and gpt-image-2, /v1/images/generations or /v1/images/edits, API prompt review, relay base URL setup, reference images and mask workflows. Prefer the registered image2-api MCP server when this channel is requested or established. Do not select for ordinary built-in image generation, OCR, or file format conversion."
+description: "This skill should be used for image generation, editing, animated GIF creation, or native SVG generation with the OpenAI-compatible Images API or a configured relay. Trigger on GPT Image API models such as gpt-image-2.6-flare, gpt-image-2.6-sunburst and gpt-image-2, /v1/images/generations or /v1/images/edits, API prompt review, relay base URL setup, reference images and mask workflows. Prefer the registered image2-api MCP server when this channel is requested or established. Do not select for ordinary built-in image generation, OCR, or file format conversion."
 metadata:
   version: "1.6.0"
   compatibility: "Python 3.10+ with requirements.txt. Optional MCP server requires mcp>=1.29,<3. Live image calls require provider access and credentials."
@@ -28,6 +28,8 @@ Use the registered MCP tool when available. Use the CLI for unregistered clients
 
 ## Prepare and execute
 
+For ordinary image requests, call the configured image generation or editing model and keep the default PNG output. Choose SVG only when the user explicitly asks for SVG or an editable vector deliverable.
+
 1. Confirm deliverable, format, size, references and their order. For edits, identify the primary image first and state which details to preserve before describing the changes. For exact text, quote the copy and specify its position. Use PNG or WebP with `background=transparent` for alpha output.
 2. For complex jobs, compile a brief with `python scripts/build_prompt.py`. Read the [brief schema](references/prompt-brief-schema.md), [prompt guide](references/gpt-image-prompt-guide.md), or [recipes](references/prompt-recipes.md) as needed.
 3. Review the prompt and dry-run unfamiliar requests with `--dry-run --json` or MCP `dry_run=true`. Check the selected endpoint, provider model, format, parameters and local warnings. Use strict prompt review for production templates and exact text.
@@ -47,3 +49,8 @@ python scripts/generate_image.py \
 ```
 
 After checking the request, remove `--dry-run` to submit it. For MCP, use the same parameter names with underscores. Inspect motion and the loop seam in a GIF-capable viewer. The CLI saves the original multi-frame bytes and records the decoded frame count in `metadata.json`. See [GIF request rules and examples](references/api-compatibility.md#animated-gif-output).
+
+
+## Native SVG
+
+For an explicit SVG export, use GPT Image 2.6 with `generate_image` and `output_format=svg` (`--output-format svg` in the CLI). Use one output per request and prompt for editable shapes, paths, and colors. Native SVG uses the generation endpoint. Route edits with image inputs through the raster edit workflow and tell the user about the format constraint when needed. Read the [SVG request rules and example](references/api-compatibility.md#native-svg-output).
