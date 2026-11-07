@@ -30,11 +30,11 @@ python scripts/doctor.py --json
 ### 编译和审查提示词
 
 ```bash
-python scripts/build_prompt.py --brief examples/briefs/logo-mark.json --output prompt.txt
-python scripts/prompt_doctor.py --prompt-file prompt.txt --profile logo
+python scripts/build_prompt.py --brief examples/briefs/logo-mark.json --output output/prompt.txt
+python scripts/prompt_doctor.py --prompt-file output/prompt.txt --profile logo
 ```
 
-使用 `--prompt-file prompt.txt` 将已审查的提示词传给生成脚本。结构化字段见 [提示词 Schema](references/prompt-brief-schema.md)。
+使用 `--prompt-file output/prompt.txt` 将已审查的提示词传给生成脚本。结构化字段见 [提示词 Schema](references/prompt-brief-schema.md)。
 
 ### 生成默认 PNG
 
