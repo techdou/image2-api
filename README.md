@@ -2,13 +2,13 @@
 
 [English](#english) | [中文](#中文导读)
 
-`image2-api` is an Agent Skill for generating and editing images through an OpenAI-compatible Images API or third-party GPT Image relay. It provides first-class GPT Image 2.5 Flare/Sunburst support, capability-based model validation, `xhigh`/`max`, current transparency rules, and updated mask compatibility checks while preserving GPT Image 2 relay compatibility.
+`image2-api` is an Agent Skill for generating and editing images through an OpenAI-compatible Images API or third-party GPT Image relay. It provides GPT Image 2.6 Flare and Sunburst, native animated GIF generation from text or still references, and capability checks for existing GPT Image relays.
 
 ---
 
 ## 中文导读
 
-**这是什么**：一个 Agent Skill，通过 OpenAI 兼容的 Images API（或第三方 GPT Image 中转）生成、编辑图片。自 1.5.0 起同时以 MCP server 形式交付，是 AI 生图/改图的**首选渠道**——尤其当画内文字、精确尺寸、透明背景、参考图控制有要求时；也承接 API/中转配置、模型别名、prompt 编译审查等显式工作流。
+**这是什么**：一个 Agent Skill，通过 OpenAI 兼容的 Images API（或第三方 GPT Image 中转）生成、编辑图片。自 1.5.0 起同时以 MCP server 形式交付，适用于明确指定的 API 或中转生图、改图及 GIF 动图工作流；也承接 API/中转配置、模型别名、prompt 编译审查等显式工作流。
 
 **快速上手**：
 
@@ -27,9 +27,9 @@ python scripts/doctor.py
 python scripts/generate_image.py --prompt-file prompt.txt --dry-run --json
 ```
 
-**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · GPT Image 2.5 Flare/Sunburst · 结构化 brief → GPT Image prompt 编译 · prompt 审查 · capability-based 模型校验 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测 · stdio MCP server（4 tools）。
+**主要能力**：文生图 · 图生图/编辑/合成/蒙版 · GPT Image 2.6 Flare/Sunburst · 原生 GIF · 结构化 brief → GPT Image prompt 编译 · prompt 审查 · capability-based 模型校验 · 第三方模型别名支持 · 干跑校验 · 重试与响应归一 · 批量候选 + 接触印样 · Agent Skills 结构校验 · 离线单测 · stdio MCP server（4 tools）。
 
-**MCP 调用（可选）**：`pip install "mcp>=2"` 后把 `mcp_server.py` 注册为 stdio server，即可在 ZCode 等 MCP 客户端直调 4 个 tools：`generate_image` / `edit_image` / `check_prompt`（离线体检）/ `diagnose_api`（连通诊断）。与 CLI 路径等价；凭证仍由脚本自身从 `.env` 加载，不经过 server。详见 SKILL.md「MCP server」一节。
+**MCP 调用（可选）**：`pip install "mcp>=1.29,<3"` 后把 `mcp_server.py` 注册为 stdio server，即可在 ZCode 等 MCP 客户端直调 4 个 tools：`generate_image` / `edit_image` / `check_prompt`（离线体检）/ `diagnose_api`（连通诊断）。CLI 和 MCP 共用请求处理脚本，凭证由脚本从 `.env` 加载。详见下方 [MCP 使用说明](#run-as-an-mcp-server)。
 
 **文档地图**（`references/` 目录）：`agent-routing` 触发边界 · `gpt-image-prompt-guide` prompt 设计与 Flare/Sunburst 选型 · `prompt-recipes` 配方 · `api-compatibility` API 细节 · `troubleshooting` 排错。
 
@@ -37,7 +37,9 @@ python scripts/generate_image.py --prompt-file prompt.txt --dry-run --json
 
 ---
 
-Since 1.5.0 this skill also ships as an MCP server and is the preferred channel for image generation/editing requests — especially when in-image text, exact sizes, transparent backgrounds, or reference-image control matter. Use the CLI below for API/relay configuration, model aliases, prompt compilation, and reproducible run metadata.
+## English
+
+Since 1.5.0 this skill also ships as an MCP server for explicitly requested or configured Images API workflows. Use the CLI below for API/relay configuration, model aliases, prompt compilation, and reproducible run metadata.
 
 ## What it provides
 
@@ -45,7 +47,7 @@ Since 1.5.0 this skill also ships as an MCP server and is the preferred channel 
 - Image editing, localization, compositing, multiple references, and masks through `/images/edits`
 - Structured JSON brief → GPT Image creative-brief compilation
 - Prompt profiles and deterministic prompt review
-- GPT Image 2.5 Flare/Sunburst plus third-party model alias support through `IMAGE_API_MODEL_FAMILY`
+- GPT Image 2.6 Flare/Sunburst, native animated GIFs, and third-party model alias support through `IMAGE_API_MODEL_FAMILY`
 - Capability-aware validation for quality, flexible sizes, transparency, and legacy parameter differences
 - Dry-run request validation before network execution
 - Base64 and URL response normalization
@@ -102,7 +104,7 @@ IMAGE_API_MODEL=image-2
 IMAGE_API_MODEL_FAMILY=gpt-image-2
 ```
 
-`IMAGE_API_MODEL_FAMILY` is important when the provider renames the model. Use `gpt-image-2.5` for aliases backed by Flare/Sunburst, `gpt-image-2` for GPT Image 2, or `generic` only when the upstream capability is genuinely unknown.
+`IMAGE_API_MODEL_FAMILY` is important when the provider renames the model. Use the provider’s underlying model family, such as `gpt-image-2.6` for aliases backed by GPT Image 2.6 Flare or Sunburst.
 
 Check configuration without spending credits:
 
@@ -116,14 +118,22 @@ Send a real low-quality probe only when desired:
 python scripts/doctor.py --probe
 ```
 
-## GPT Image 2.5 model selection
+## GPT Image 2.6 model selection
 
 For new official OpenAI workflows:
 
-- `gpt-image-2.5-flare` — speed-first, high-quality everyday generation and rapid iteration.
-- `gpt-image-2.5-sunburst` — quality-first, especially when precise editing and subject preservation matter.
+- `gpt-image-2.6-flare` — speed-first, high-quality everyday generation and rapid iteration.
+- `gpt-image-2.6-sunburst` — quality-first, especially when precise editing and subject preservation matter.
 
-Both support generation, editing, transparent backgrounds, flexible sizes, and `low|medium|high|xhigh|max|auto`. Keep the default relay model unchanged unless your provider actually exposes a 2.5 alias; this avoids breaking existing third-party configurations.
+Both support generation, editing, native animated GIFs and `low|medium|high|xhigh|max|auto`. The skill uses your existing relay configuration by default. For animated GIFs, select a GPT Image 2.6 model and confirm that your provider enables the format.
+
+```bash
+python scripts/generate_image.py --model gpt-image-2.6-flare --output-format gif \
+  --prompt "A coffee-bean mascot waves once and returns to its starting pose. Fixed camera, seamless loop." \
+  --frame-count 9 --frame-duration-ms 200 --dry-run --json
+```
+
+Remove `--dry-run` after checking the request. To animate a still image, use `edit_image.py --image mascot.png` with the same GIF options. See [GIF request rules](references/api-compatibility.md#animated-gif-output).
 
 ## Compile a normalized prompt
 
@@ -189,13 +199,13 @@ python scripts/generate_image.py \
   --output-dir output/project-hero
 ```
 
-Official GPT Image 2.5 example:
+Official GPT Image 2.6 example:
 
 ```bash
 python scripts/generate_image.py \
   --prompt-file prompt.txt \
-  --model gpt-image-2.5-flare \
-  --model-family gpt-image-2.5 \
+  --model gpt-image-2.6-flare \
+  --model-family gpt-image-2.6 \
   --size 2048x1152 \
   --quality xhigh \
   --background transparent \
@@ -274,7 +284,7 @@ The installed directory is always named `image2-api`, matching the `name` in `SK
 
 ## Run as an MCP server
 
-Requires `mcp>=2` (`pip install "mcp>=2"`). Register as a stdio server (path per your install location):
+Requires `mcp>=1.29,<3` (`pip install "mcp>=1.29,<3"`). Register as a stdio server (path per your install location):
 
 ```json
 "image2-api": {
@@ -286,7 +296,7 @@ Requires `mcp>=2` (`pip install "mcp>=2"`). Register as a stdio server (path per
 
 Tools: `generate_image` · `edit_image` (references/mask via `image_paths`/`mask_path`) · `check_prompt` (offline, free) · `diagnose_api` (read-only, keys never echoed).
 
-Design notes: thin subprocess wrapper over `scripts/*.py --json` (upgrades to the scripts flow through automatically); credentials stay in `.env` loaded by the scripts themselves; prompts go through a temp file to avoid Windows command-line length limits; size rules and input existence are validated locally before any API call; `readOnlyHint` annotations mark the two read-only tools. Default output root: `~/.agents/image2-api-output/<timestamp>/`. The CLI workflow below and the MCP tools are equivalent paths.
+Design notes: thin subprocess wrapper over `scripts/*.py --json` (upgrades to the scripts flow through automatically); credentials stay in `.env` loaded by the scripts themselves; prompts go through a temp file to avoid Windows command-line length limits; size rules and input existence are validated locally before any API call; `readOnlyHint` annotations mark the two read-only tools. Default output root: `~/.agents/image2-api-output/<timestamp>/`. For GIFs, pass `model`, `output_format="gif"`, `frame_count`, and `frame_duration_ms` to either image tool. Use `dry_run=true` to validate locally.
 
 ## Validate and test
 
@@ -308,7 +318,7 @@ Use `evals/trigger-cases.json` to test skill-selection quality in the target Age
 ## Documentation map
 
 - `references/agent-routing.md` — positive and negative activation rules
-- `references/gpt-image-prompt-guide.md` — GPT Image 2.5/2 prompt design and Flare/Sunburst selection
+- `references/gpt-image-prompt-guide.md` — GPT Image prompt design and Flare/Sunburst selection
 - `references/prompt-recipes.md` — profile-specific patterns
 - `references/prompt-brief-schema.md` — brief authoring guide
 - `references/api-compatibility.md` — endpoints, model family, limits, relay differences

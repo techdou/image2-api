@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 from PIL import Image, UnidentifiedImageError
 
-from .capabilities import model_capabilities
+from .capabilities import OUTPUT_FORMATS, model_capabilities
 from .utils import sha256_bytes
 
 MAX_INPUT_IMAGES = 16
@@ -25,17 +25,24 @@ class ImageInfo:
     bytes: int
     sha256: str
     has_alpha: bool
+    frame_count: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        result = asdict(self)
+        if self.frame_count is None:
+            del result["frame_count"]
+        return result
 
 
-def validate_image_bytes(data: bytes, filename: str = "image") -> ImageInfo:
-    if len(data) < 256:
+def validate_image_bytes(
+    data: bytes, filename: str = "image", *, require_animated_gif: bool = False
+) -> ImageInfo:
+    if len(data) < 256 and not data.startswith((b"GIF87a", b"GIF89a")):
         raise ValueError(f"{filename}: returned image is implausibly small ({len(data)} bytes).")
     prefix = data[:256].lstrip().lower()
     if prefix.startswith(b"<html") or prefix.startswith(b"<!doctype html"):
         raise ValueError(f"{filename}: the API returned an HTML page instead of an image.")
+    frame_count = None
     try:
         with Image.open(BytesIO(data)) as image:
             image.verify()
@@ -45,9 +52,16 @@ def validate_image_bytes(data: bytes, filename: str = "image") -> ImageInfo:
             fmt = (image.format or "unknown").lower()
             mode = image.mode
             has_alpha = "A" in image.getbands() or "transparency" in image.info
-    except (UnidentifiedImageError, OSError) as exc:
+            if fmt == "gif":
+                frame_count = image.n_frames
+                for index in range(1, frame_count):
+                    image.seek(index)
+                    image.load()
+    except (UnidentifiedImageError, OSError, EOFError) as exc:
         raise ValueError(f"{filename}: invalid or corrupted image bytes: {exc}") from exc
-    if width < 64 or height < 64:
+    if require_animated_gif and (frame_count is None or frame_count < 2):
+        raise ValueError(f"{filename}: expected a multi-frame GIF, got {fmt} with {frame_count or 1} frame(s).")
+    if fmt != "gif" and (width < 64 or height < 64):
         raise ValueError(f"{filename}: image dimensions are too small: {width}x{height}.")
     return ImageInfo(
         filename=filename,
@@ -58,6 +72,7 @@ def validate_image_bytes(data: bytes, filename: str = "image") -> ImageInfo:
         bytes=len(data),
         sha256=sha256_bytes(data),
         has_alpha=has_alpha,
+        frame_count=frame_count,
     )
 
 
@@ -157,6 +172,9 @@ def validate_generation_options(
     output_format: str,
     output_compression: int | None,
     count: int,
+    frame_count: int | None = None,
+    frame_duration_ms: int | None = None,
+    has_mask: bool = False,
 ) -> list[str]:
     import re
 
@@ -171,8 +189,19 @@ def validate_generation_options(
     if background not in {"transparent", "opaque", "auto"}:
         raise ValueError("background must be transparent, opaque, or auto.")
     output_format = output_format.lower()
-    if output_format not in {"png", "jpeg", "webp"}:
-        raise ValueError("output_format must be png, jpeg, or webp.")
+    if output_format not in OUTPUT_FORMATS:
+        raise ValueError(f"output_format must be one of: {', '.join(OUTPUT_FORMATS)}.")
+    if output_format == "gif":
+        if not caps.animated_gif:
+            raise ValueError("GIF output requires GPT Image 2.6 Flare or Sunburst (or a relay alias declared as gpt-image-2.6).")
+        if has_mask:
+            raise ValueError("GIF output does not support masks. Supply still reference images without a mask.")
+        if frame_count is not None and not 2 <= frame_count <= 16:
+            raise ValueError("frame_count must be between 2 and 16.")
+        if frame_duration_ms is not None and not 20 <= frame_duration_ms <= 2000:
+            raise ValueError("frame_duration_ms must be between 20 and 2000.")
+    elif frame_count is not None or frame_duration_ms is not None:
+        raise ValueError("frame_count and frame_duration_ms are only valid for GIF output.")
     if not 1 <= count <= 10:
         raise ValueError("count must be between 1 and 10.")
     if output_compression is not None:
@@ -199,7 +228,10 @@ def validate_generation_options(
         width, height = map(int, match.groups())
         if width <= 0 or height <= 0:
             raise ValueError("size edges must be positive integers.")
-        if caps.flexible_size:
+        if output_format == "gif":
+            if width % 16 or height % 16:
+                raise ValueError("GIF frame edges must be multiples of 16.")
+        elif caps.flexible_size:
             if width > 3840 or height > 3840:
                 raise ValueError(
                     f"For {caps.family}, each edge must not exceed 3840 pixels."

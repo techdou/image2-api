@@ -90,6 +90,30 @@ class FallbackTests(unittest.TestCase):
         except StopIteration:
             pass
 
+    def test_gif_fallback_keeps_explicit_primary_model_and_skips_legacy_backup(self):
+        primary = _profile("primary", "https://primary.example.com/v1")
+        legacy = _profile("legacy", "https://legacy.example.com/v1")
+        backup = _profile("backup", "https://backup.example.com/v1")
+        backup.model = "sunburst-relay"
+        backup.model_family = "gpt-image-2.6"
+        config = _config_with_chain(primary, legacy, backup)
+        config.model = "gpt-image-2.6-flare"
+        config.model_family = "auto"
+        config.generations_url = "https://primary.example.com/custom"
+        client = ImageAPIClient(config)
+
+        with patch("image2lib.client.httpx.Client") as mock_client:
+            request = mock_client.return_value.__enter__.return_value.request
+            request.side_effect = [_mock_response(503), _mock_response(200)]
+            result = client.generate({"model": config.model, "output_format": "gif"})
+
+        self.assertEqual(result.provider_name, "backup")
+        first, second = request.call_args_list
+        self.assertEqual(first.args[1], config.generations_url)
+        self.assertEqual(first.kwargs["json"]["model"], config.model)
+        self.assertEqual(second.args[1], backup.generation_endpoint())
+        self.assertEqual(second.kwargs["json"]["model"], backup.model)
+
     def test_no_fallback_on_400(self):
         config = _config_with_chain(
             _profile("primary", "https://primary.example.com/v1"),

@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 import threading
+from email import policy
+from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from pathlib import Path
@@ -30,6 +32,18 @@ PNG_BYTES = make_png()
 PNG_B64 = base64.b64encode(PNG_BYTES).decode("ascii")
 
 
+def make_gif() -> bytes:
+    first = Image.new("RGB", (32, 32), "brown")
+    second = Image.new("RGB", (32, 32), "orange")
+    buffer = BytesIO()
+    first.save(buffer, format="GIF", save_all=True, append_images=[second], duration=160, loop=0)
+    return buffer.getvalue()
+
+
+GIF_BYTES = make_gif()
+GIF_B64 = base64.b64encode(GIF_BYTES).decode("ascii")
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "Image2Mock/1.0"
 
@@ -44,6 +58,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Request-Id", "mock-request-123")
         self.end_headers()
         self.wfile.write(body)
+
+    def _animated_response(self, fields: dict) -> None:
+        expected = {
+            "model": "gpt-image-2.6-flare",
+            "size": "auto",
+            "frame_count": "2",
+            "frame_duration_ms": "160",
+        }
+        if any(str(fields.get(name)) != value for name, value in expected.items()):
+            self._json({"error": {"message": "incorrect GIF request fields"}}, status=400)
+            return
+        self._json({"data": [{"b64_json": GIF_B64}]})
 
     def do_GET(self) -> None:
         if self.path == "/files/mock.png":
@@ -60,7 +86,9 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length)
         if self.path == "/v1/images/generations":
             payload = json.loads(raw or b"{}")
-            if "url response" in payload.get("prompt", "").lower():
+            if payload.get("output_format") == "gif":
+                self._animated_response(payload)
+            elif "url response" in payload.get("prompt", "").lower():
                 host, port = self.server.server_address
                 self._json({"data": [{"url": f"http://{host}:{port}/files/mock.png"}]})
             else:
@@ -70,7 +98,19 @@ class Handler(BaseHTTPRequestHandler):
             if b"multipart/form-data" not in self.headers.get("Content-Type", "").encode():
                 self._json({"error": {"message": "multipart required"}}, status=400)
                 return
-            self._json({"data": [{"b64_json": PNG_B64}]})
+            content_type = self.headers["Content-Type"]
+            message = BytesParser(policy=policy.default).parsebytes(
+                f"Content-Type: {content_type}\r\n\r\n".encode() + raw
+            )
+            fields = {
+                part.get_param("name", header="Content-Disposition"): part.get_content()
+                for part in message.iter_parts()
+                if part.get_filename() is None
+            }
+            if fields.get("output_format") == "gif":
+                self._animated_response(fields)
+            else:
+                self._json({"data": [{"b64_json": PNG_B64}]})
             return
         self._json({"error": {"message": "not found"}}, status=404)
 
@@ -170,9 +210,32 @@ def main() -> int:
             if not edit_payload.get("images") or not Path(edit_payload["images"][0]).is_file():
                 raise RuntimeError("Edit CLI did not create an image file.")
 
+            for operation, inputs in (("generate", []), ("edit", ["--image", str(source)])):
+                run_dir = tmp_path / f"gif-{operation}"
+                result = subprocess.run(
+                    [
+                        sys.executable, str(root / f"scripts/{operation}_image.py"),
+                        *inputs, "--prompt", "The mascot waves and returns to its starting pose.",
+                        "--model", "gpt-image-2.6-flare", "--output-format", "gif",
+                        "--frame-count", "2", "--frame-duration-ms", "160",
+                        "--output-dir", str(run_dir), "--json",
+                    ],
+                    cwd=root,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                gif_path = Path(json.loads(result.stdout)["images"][0])
+                metadata = json.loads((run_dir / "metadata.json").read_text(encoding="utf-8"))
+                if gif_path.suffix != ".gif" or gif_path.read_bytes() != GIF_BYTES:
+                    raise RuntimeError(f"{operation} did not preserve the GIF output.")
+                if metadata["images"][0]["frame_count"] != 2:
+                    raise RuntimeError(f"{operation} did not report the decoded frame count.")
+
         print(
             "Smoke test passed: base64 and URL responses, multipart edit, validation, "
-            "and end-to-end generate/edit CLIs."
+            "and end-to-end still and GIF generate/edit CLIs."
         )
         return 0
     finally:

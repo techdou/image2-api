@@ -11,7 +11,8 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-from .config import APIConfig
+from .capabilities import model_capabilities
+from .config import APIConfig, ProviderChain, ProviderProfile
 from .outputs import media_type_for
 from .utils import redact
 from .version import __version__
@@ -167,12 +168,26 @@ class ImageAPIClient:
         chain = self.config.chain
         assert chain is not None
         attempts_log: list[dict[str, Any]] = []
-        for index, profile in enumerate(chain.profiles):
-            is_last = index == len(chain.profiles) - 1
-            try:
-                return self._try_one_provider(
-                    profile, method, url, chain=chain, **kwargs
+        request_fields = kwargs.get("json") or kwargs.get("data") or {}
+        for index, configured_profile in enumerate(chain.profiles):
+            profile = configured_profile if index else self.config.primary_profile
+            if request_fields.get("output_format") == "gif" and not model_capabilities(
+                profile.model, profile.model_family
+            ).animated_gif:
+                attempts_log.append(
+                    {
+                        "provider": profile.name,
+                        "status_code": None,
+                        "reason": "GIF unsupported by configured model family",
+                        "attempts": 0,
+                    }
                 )
+                continue
+            provider_url = url
+            if index:
+                provider_url = profile.edit_endpoint() if "data" in kwargs else profile.generation_endpoint()
+            try:
+                return self._try_one_provider(profile, method, provider_url, chain=chain, **kwargs)
             except _ShouldFallback as exc:
                 attempts_log.append(
                     {
@@ -183,20 +198,6 @@ class ImageAPIClient:
                     }
                 )
                 continue
-            except ImageAPIError as exc:
-                # Non-fallback terminal error (e.g. 400, 401, decode failure).
-                # Don't try other providers — they won't fix a malformed request.
-                attempts_log.append(
-                    {
-                        "provider": profile.name,
-                        "status_code": getattr(exc, "status_code", None),
-                        "reason": str(exc),
-                        "attempts": 1,
-                    }
-                )
-                # If this was the last provider, surface; otherwise surface
-                # the terminal error without falling back.
-                raise
         # All providers exhausted — surface a chain error.
         names = " -> ".join(p.name for p in chain.profiles)
         details = "; ".join(
@@ -223,9 +224,6 @@ class ImageAPIClient:
         move to the next provider. Raises ImageAPIError for terminal errors
         that should not trigger fallback.
         """
-        # Rebuild URL against this provider's endpoint when caller passed
-        # the original endpoint. Generate/edit endpoints differ per provider.
-        provider_url = self._endpoint_for_profile(url, profile)
         # Caller-provided headers (from generate()/edit()) carry the PRIMARY
         # provider's Authorization. We must NOT let it override this profile's
         # credentials, so we drop Authorization from caller headers and let
@@ -259,7 +257,7 @@ class ImageAPIClient:
             for attempt in range(profile.max_retries + 1):
                 attempts += 1
                 try:
-                    response = http_client.request(method, provider_url, headers=headers, **kwargs)
+                    response = http_client.request(method, url, headers=headers, **kwargs)
                 except (httpx.TimeoutException, httpx.NetworkError) as exc:
                     last_exc = exc
                     if attempt >= profile.max_retries:
@@ -308,21 +306,6 @@ class ImageAPIClient:
                 provider=profile.name,
             ) from last_exc
         raise ImageAPIError(f"Request failed: {last_exc}")
-
-    @staticmethod
-    def _endpoint_for_profile(original_url: str, profile: ProviderProfile) -> str:
-        """Map the original endpoint URL to the equivalent endpoint on a
-        different provider. We compare against both providers' endpoints so
-        that callers passing `generation_endpoint` or `edit_endpoint` get
-        the correct URL even when the chain swaps providers.
-        """
-        # If the URL doesn't match a known endpoint pattern, pass it through.
-        if "/images/generations" in original_url or "/images/edits" in original_url:
-            if "/images/generations" in original_url:
-                return profile.generation_endpoint()
-            if "/images/edits" in original_url:
-                return profile.edit_endpoint()
-        return original_url
 
     def generate(self, payload: dict[str, Any]) -> APIResult:
         return self._request(

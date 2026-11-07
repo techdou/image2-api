@@ -49,3 +49,8 @@ The Agent must distinguish a dry run from successful live generation.
 ## Progressive reference loading
 
 Load `SKILL.md` first. Open only one-level reference files needed for the current subtask. Avoid loading all prompt recipes, API notes, and troubleshooting material into context at once.
+
+
+## Optional MCP server
+
+Install `mcp>=1.29,<3` alongside the CLI dependencies. In an MCP client's stdio configuration, use the Python interpreter that has those dependencies as the command, and pass the absolute path to `mcp_server.py` as the only argument. Register the server under `image2-api`. Its generation and edit tools use the same provider configuration as the CLI.

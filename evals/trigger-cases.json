@@ -1,6 +1,6 @@
 {
   "skill": "image2-api",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "cases": [
     {
       "id": "positive-relay-generation",
@@ -26,6 +26,21 @@
       "id": "positive-dry-run",
       "expected": "select",
       "prompt": "将需求编译成 GPT Image 2 prompt，针对我的 relay 做 dry-run，不要实际扣费。"
+    },
+    {
+      "id": "positive-gif-generate",
+      "expected": "select",
+      "prompt": "用 gpt-image-2.6-flare 的 Images API 生一张 9 帧的循环 GIF，吉祥物挥完手回到起始姿势。"
+    },
+    {
+      "id": "positive-gif-edit",
+      "expected": "select",
+      "prompt": "用我配置的 image2-api MCP，把这张产品图作为参考生成原生 GIF。"
+    },
+    {
+      "id": "negative-gif-convert",
+      "expected": "do-not-select",
+      "prompt": "把已经导出的 10 张 PNG 按顺序拼成 GIF。"
     },
     {
       "id": "negative-built-in-draw",

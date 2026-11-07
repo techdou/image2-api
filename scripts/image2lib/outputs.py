@@ -13,6 +13,7 @@ _FORMAT_EXTENSIONS = {
     "jpeg": ".jpg",
     "jpg": ".jpg",
     "webp": ".webp",
+    "gif": ".gif",
 }
 
 

@@ -6,7 +6,8 @@ Select `image2-api` when the request explicitly involves one or more of the foll
 
 - an OpenAI-compatible Images API;
 - a third-party GPT Image relay or provider;
-- `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2`, or a relay alias such as `image-2`;
+- an Images API model such as `gpt-image-2.6-flare`, `gpt-image-2.6-sunburst` or a relay alias such as `image-2`;
+- native animated GIF output through the Images API or the configured image2-api MCP server;
 - a custom `base_url`, token, endpoint, request header, or provider parameter;
 - `/v1/images/generations` or `/v1/images/edits`;
 - compiling or reviewing a prompt specifically for an API call;
@@ -73,7 +74,7 @@ For “帮我写 GPT Image prompt”, select this skill when the prompt is inten
 
 ## Load references progressively
 
-- Prompt construction / 2.5 model selection → `gpt-image-prompt-guide.md`
+- Prompt construction / model selection → `gpt-image-prompt-guide.md`
 - Profile-specific templates → `prompt-recipes.md`
 - JSON brief fields → `prompt-brief-schema.md`
 - Relay parameters and limits → `api-compatibility.md`

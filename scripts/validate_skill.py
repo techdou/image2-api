@@ -66,7 +66,7 @@ def validate(root: Path) -> dict[str, Any]:
 
     name = meta.get("name", "")
     description = meta.get("description", "")
-    compatibility = meta.get("compatibility", "")
+    compatibility = meta.get("compatibility", meta.get("metadata.compatibility", ""))
     version = meta.get("metadata.version", "")
 
     _add(checks, bool(NAME_RE.fullmatch(name)), "name-format", f"Skill name is {name!r} and must use lowercase hyphen-case.")

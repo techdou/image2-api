@@ -365,15 +365,16 @@ class APIConfig:
             )
         api_key = os.getenv("IMAGE_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
         resolved_model = (model or os.getenv("IMAGE_API_MODEL") or "gpt-image-2").strip()
+        configured_family = os.getenv("IMAGE_API_MODEL_FAMILY") or "auto"
+        if model and resolve_model_family(resolved_model) != "generic":
+            configured_family = "auto"
         return cls(
             api_key=api_key.strip(),
             base_url=normalize_base_url(
                 base_url or os.getenv("IMAGE_API_BASE_URL") or "https://api.openai.com/v1"
             ),
             model=resolved_model,
-            model_family=(
-                model_family or os.getenv("IMAGE_API_MODEL_FAMILY") or "auto"
-            ).strip(),
+            model_family=(model_family or configured_family).strip(),
             generations_url=generations_url or os.getenv("IMAGE_API_GENERATIONS_URL") or None,
             edits_url=edits_url or os.getenv("IMAGE_API_EDITS_URL") or None,
             timeout=timeout if timeout is not None else _env_float("IMAGE_API_TIMEOUT", 180.0),
@@ -406,13 +407,11 @@ class APIConfig:
     def primary_profile(self) -> ProviderProfile:
         """Return the active primary provider as a ProviderProfile.
 
-        Single-provider mode (legacy) constructs an ad-hoc profile so callers
-        can treat both modes uniformly.
+        Build from the resolved values so explicit overrides also reach the
+        primary provider in chain mode.
         """
-        if self.chain is not None:
-            return self.chain.profiles[0]
         return ProviderProfile(
-            name="default",
+            name=self.chain.profiles[0].name if self.chain else "default",
             api_key=self.api_key,
             base_url=self.base_url,
             model=self.model,
@@ -448,7 +447,7 @@ class APIConfig:
         if self.model_family == "auto" and self.resolved_model_family == "generic":
             warnings.append(
                 "The relay model alias is not recognized. Set IMAGE_API_MODEL_FAMILY to the "
-                "underlying family (for example gpt-image-2.5 or gpt-image-2) so model-specific "
+                "underlying family (for example gpt-image-2.6 or gpt-image-2) so model-specific "
                 "validation remains active."
             )
         if not self.verify_ssl:

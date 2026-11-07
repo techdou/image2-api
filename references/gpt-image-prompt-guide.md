@@ -1,11 +1,8 @@
 # GPT Image prompt guide
 
-This guide covers GPT Image 2.5, GPT Image 2, and earlier GPT Image-compatible relay workflows used by this skill. For new API workflows, GPT Image 2.5 provides two choices:
+For new Images API workflows, use `gpt-image-2.6-flare` when latency and iteration rate matter, and `gpt-image-2.6-sunburst` for precise edits, subject preservation or demanding final output. GPT Image 2.5 and 2 workflows can use their configured model. Keep model choice and API parameters separate from prompt wording.
 
-- `gpt-image-2.5-flare`: speed-first; use when latency and iteration rate matter most.
-- `gpt-image-2.5-sunburst`: quality-first; use when editing precision, subject preservation, or demanding final quality matters most.
-
-Both GPT Image 2.5 models support generation, editing, transparent backgrounds, flexible resolutions, and `low|medium|high|xhigh|max|auto` quality settings. Keep model choice and API parameters separate from prompt wording.
+For native GIF output, describe one readable motion, the starting pose, the return to it, and whether the camera moves. For reference-guided animation, state which subject and scene details remain fixed. See [GIF request options](api-compatibility.md#animated-gif-output).
 
 ## 1. Prompt like a visual brief, not a tag pile
 

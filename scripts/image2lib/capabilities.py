@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-MODEL_FAMILIES = ("auto", "gpt-image-2.5", "gpt-image-2", "gpt-image-1.5", "generic")
+MODEL_FAMILIES = ("auto", "gpt-image-2.6", "gpt-image-2.5", "gpt-image-2", "gpt-image-1.5", "generic")
+OUTPUT_FORMATS = ("png", "jpeg", "webp", "gif")
 QUALITY_CHOICES = ("low", "medium", "high", "xhigh", "max", "auto")
 STANDARD_GPT_IMAGE_SIZES = frozenset({"1024x1024", "1536x1024", "1024x1536"})
 
@@ -13,12 +14,21 @@ class ModelCapabilities:
     qualities: frozenset[str]
     flexible_size: bool
     transparent_background: bool
+    animated_gif: bool = False
     transparent_preview: bool = False
     omit_input_fidelity: bool = False
     experimental_over_pixels: int | None = None
 
 
 _CAPABILITIES = {
+    "gpt-image-2.6": ModelCapabilities(
+        family="gpt-image-2.6",
+        qualities=frozenset(QUALITY_CHOICES),
+        flexible_size=True,
+        transparent_background=True,
+        animated_gif=True,
+        experimental_over_pixels=3_686_400,
+    ),
     "gpt-image-2.5": ModelCapabilities(
         family="gpt-image-2.5",
         qualities=frozenset({"low", "medium", "high", "xhigh", "max", "auto"}),
@@ -63,6 +73,8 @@ def resolve_model_family(model: str, configured: str | None = None) -> str:
         return family
 
     normalized = model.strip().lower()
+    if normalized in {"gpt-image-2.6-flare", "gpt-image-2.6-sunburst"}:
+        return "gpt-image-2.6"
     if normalized.startswith(("gpt-image-2.5-flare", "gpt-image-2.5-sunburst")):
         return "gpt-image-2.5"
     if normalized == "gpt-image-2" or normalized.startswith("gpt-image-2-"):
@@ -86,8 +98,8 @@ def is_gpt_image_25_model(model: str) -> bool:
 
 def model_role(model: str) -> str | None:
     normalized = model.strip().lower()
-    if normalized.startswith("gpt-image-2.5-flare"):
+    if normalized == "gpt-image-2.6-flare" or normalized.startswith("gpt-image-2.5-flare"):
         return "speed"
-    if normalized.startswith("gpt-image-2.5-sunburst"):
+    if normalized == "gpt-image-2.6-sunburst" or normalized.startswith("gpt-image-2.5-sunburst"):
         return "quality"
     return None

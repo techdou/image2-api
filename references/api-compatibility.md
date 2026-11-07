@@ -26,21 +26,22 @@ The run metadata records only whether a key is configured and the names of extra
 A provider may expose an official model under a custom alias. Configure both the provider-facing name and the underlying family:
 
 ```dotenv
-IMAGE_API_MODEL=image-2.5-pro
-IMAGE_API_MODEL_FAMILY=gpt-image-2.5
+IMAGE_API_MODEL=image-2.6-pro
+IMAGE_API_MODEL_FAMILY=gpt-image-2.6
 ```
 
 Allowed families:
 
 - `auto` — infer from recognized official model names;
+- `gpt-image-2.6` — Flare/Sunburst capabilities, including animated GIF and `xhigh|max`;
 - `gpt-image-2.5` — Flare/Sunburst capabilities, including `xhigh|max`;
 - `gpt-image-2` — GPT Image 2 capabilities;
 - `gpt-image-1.5` — earlier GPT Image family;
 - `generic` — conservative relay-portability behavior.
 
-Official names recognized automatically include `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, their `2026-09-08` snapshots, and GPT Image 2 names. When `auto` cannot recognize a relay alias, the CLI warns instead of guessing its capability family.
+The official GPT Image 2.6 and 2.5 Flare and Sunburst model IDs, 2.5 snapshots, and GPT Image 2 IDs are recognized automatically. When `auto` cannot recognize a relay alias, the CLI warns instead of guessing its capability family.
 
-## GPT Image 2.5 request checks
+## GPT Image 2.6 and 2.5 still-image checks
 
 The local validator applies these current rules to Flare and Sunburst:
 
@@ -53,7 +54,30 @@ The local validator applies these current rules to Flare and Sunburst:
 - custom size: each edge <= 3840 px, both edges multiples of 16, total pixels 655,360-8,294,400, and long:short ratio <= 3:1;
 - outputs above 3,686,400 pixels (`2560x1440`) are accepted but reported as an experimental resolution tier.
 
-Use `gpt-image-2.5-flare` when speed is the primary goal and `gpt-image-2.5-sunburst` when demanding quality/editing precision is the primary goal. Compare them with the same prompt, references, size, format, and explicit quality before changing multiple variables at once.
+Use `gpt-image-2.6-flare` for fast iteration and `gpt-image-2.6-sunburst` for detailed work or precise edits. Compare them with the same prompt, references, size, format and quality.
+
+## Animated GIF output
+
+Use `output_format=gif` with a GPT Image 2.6 model. Generation uses JSON and reference-guided animation uses multipart form data with still input images. GIF is an output format. Edit inputs remain PNG, JPEG or WebP.
+
+| Request field | Supported values | Default |
+|---|---|---|
+| `frame_count` | 2–16 | 9 |
+| `frame_duration_ms` | 20–2000 ms per frame, encoded to the nearest 10 ms | 200 |
+| `size` | `auto` or positive dimensions that are multiples of 16 | `auto` for GIF |
+
+The Images API applies its model-specific frame limits and total request pixel budget. If the provider rejects the size, use `auto` or reduce the dimensions, frames or batch size. GIF excludes masks, streaming, partial images, custom compression and the transparent background setting. The provider must enable GIF access for the project or relay.
+
+```bash
+python scripts/edit_image.py --image mascot.png \
+  --model gpt-image-2.6-sunburst --output-format gif \
+  --prompt "Preserve the mascot design and background. Animate a slow blink, then return to the original pose and loop." \
+  --frame-count 6 --frame-duration-ms 160 --dry-run --json
+```
+
+With MCP, pass `image_paths`, `model`, `output_format`, `frame_count`, `frame_duration_ms` and `dry_run` to `edit_image`. Both entry points preserve the original animation bytes and reject a still image or single-frame GIF returned for an animation request. Provider fallback only tries profiles configured for the 2.6 family when GIF is requested.
+
+See the [OpenAI Image API guide](https://developers.openai.com/api/docs/guides/image-generation#generate-animated-gif-output).
 
 ## GPT Image 2 request checks
 
@@ -63,7 +87,7 @@ For edit/reference workflows, the skill removes `input_fidelity` from GPT Image 
 
 ## Defaults and relay caveats
 
-The CLI default remains `2048x2048` and `quality=high`. The configured default model remains `gpt-image-2` for backward compatibility with existing third-party relays; upgrading the skill does not assume that every relay already exposes Flare or Sunburst.
+The CLI uses `2048x2048` for still images, `auto` for GIF size, and `quality=high` for both. The configured default model remains `gpt-image-2` for backward compatibility with existing third-party relays; upgrading the skill does not assume that every relay already exposes Flare or Sunburst.
 
 Third-party relays may cap resolution, remap model aliases, ignore transparency, reject `xhigh|max`, or omit edit/mask support even when the request shape is OpenAI-compatible. Verify requested vs actual output dimensions in `metadata.json`.
 

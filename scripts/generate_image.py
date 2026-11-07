@@ -4,11 +4,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
 from image2lib.client import ImageAPIClient, ImageAPIError, entry_to_bytes, extract_image_entries
-from image2lib.capabilities import QUALITY_CHOICES
+from image2lib.capabilities import OUTPUT_FORMATS, QUALITY_CHOICES
 from image2lib.config import APIConfig, MODEL_FAMILIES
 from image2lib.outputs import RunOutput, extension_for_format
 from image2lib.prompting import PROFILES, lint_prompt, read_prompt
@@ -31,10 +30,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--prompt-lint", default="warn", choices=["off", "warn", "strict"], help="Review prompt quality before the API call.")
     p.add_argument("--base-url", help="API base URL override, normally ending in /v1.")
     p.add_argument("--endpoint", help="Full generation endpoint override.")
-    p.add_argument("--size", default="2048x2048", help="WIDTHxHEIGHT (default 2K square). GPT Image 2/2.5: edges <=3840px, multiples of 16, ratio <=3:1. 4K landscape: 3840x2160, 4K portrait: 2160x3840.")
+    p.add_argument("--size", help="auto or WIDTHxHEIGHT. Defaults to auto for GIF and 2048x2048 for still images.")
     p.add_argument("--quality", default="high", choices=QUALITY_CHOICES)
     p.add_argument("--background", default="auto", choices=["auto", "opaque", "transparent"])
-    p.add_argument("--output-format", default="png", choices=["png", "jpeg", "webp"])
+    p.add_argument("--output-format", default="png", choices=OUTPUT_FORMATS)
+    p.add_argument("--frame-count", type=int, help="GIF only: 2-16 frames (upstream default: 9).")
+    p.add_argument("--frame-duration-ms", type=int, help="GIF only: 20-2000 ms per frame (upstream default: 200).")
     p.add_argument("--output-compression", type=int)
     p.add_argument("--moderation", default="auto", choices=["auto", "low"])
     p.add_argument("--count", type=int, default=1, help="Number of images, 1-10.")
@@ -73,6 +74,10 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
         "output_format": args.output_format,
         "moderation": args.moderation,
     }
+    if args.frame_count is not None:
+        payload["frame_count"] = args.frame_count
+    if args.frame_duration_ms is not None:
+        payload["frame_duration_ms"] = args.frame_duration_ms
     if args.output_compression is not None:
         payload["output_compression"] = args.output_compression
     return merge_extra_params(
@@ -81,12 +86,16 @@ def _payload(args: argparse.Namespace, prompt: str, model: str, n: int) -> dict[
         reserved={
             "model", "prompt", "n", "size", "quality", "background",
             "output_format", "output_compression", "moderation",
+            "frame_count", "frame_duration_ms",
+            *({"stream", "partial_images"} if args.output_format == "gif" else ()),
         },
     )
 
 
 def main() -> int:
     args = parser().parse_args()
+    if args.size is None:
+        args.size = "auto" if args.output_format == "gif" else "2048x2048"
     if getattr(args, "test", False):
         args.quality = "low"
     try:
@@ -109,6 +118,8 @@ def main() -> int:
             output_format=args.output_format,
             output_compression=args.output_compression,
             count=args.count,
+            frame_count=args.frame_count,
+            frame_duration_ms=args.frame_duration_ms,
         )
         prompt_review = None
         if args.prompt_lint != "off":
@@ -163,7 +174,9 @@ def main() -> int:
             for entry in extract_image_entries(api_result.payload):
                 data = entry_to_bytes(client, entry)
                 path = run.image_path(output_index, args.output_format, total=args.count)
-                info = validate_image_bytes(data, path.name)
+                info = validate_image_bytes(
+                    data, path.name, require_animated_gif=args.output_format == "gif"
+                )
                 actual_ext = extension_for_format(info.format)
                 if path.suffix.lower() != actual_ext:
                     path = path.with_suffix(actual_ext)

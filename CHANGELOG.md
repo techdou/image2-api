@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0 - 2026-11-07
+
+- Added GPT Image 2.6 Flare and Sunburst recognition for CLI and MCP.
+- Added native animated GIF generation and still-reference animation, with frame controls, multi-frame verification and GIF-aware provider fallback.
+- Aligned skill activation, version metadata and trigger fixtures. Added Codex interface metadata and MCP Python SDK 1.x and 2.x compatibility.
+
 ## 1.5.0 - 2026-10-26
 
 - Added a stdio MCP server (`mcp_server.py`, requires `mcp>=2`) wrapping the four highest-frequency entry points as structured tools: `generate_image`, `edit_image`, `check_prompt` (offline prompt review), and `diagnose_api` (config/connectivity diagnosis, keys never echoed).

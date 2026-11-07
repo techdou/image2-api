@@ -135,6 +135,29 @@ class CLITests(unittest.TestCase):
         payload = json.loads(proc.stdout)
         self.assertTrue(payload["ok"])
 
+    def test_gif_rejects_incompatible_options(self):
+        cases = [
+            (["--model", "gpt-image-2.5-flare"], "GIF output requires GPT Image 2.6"),
+            (["--frame-count", "17"], "frame_count must be"),
+            (["--frame-duration-ms", "19"], "frame_duration_ms must be"),
+            (["--output-compression", "50"], "only valid for jpeg or webp"),
+            (["--extra-param", "stream=true"], "cannot override standard request fields"),
+        ]
+        for flags, message in cases:
+            with self.subTest(flags=flags):
+                result = subprocess.run(
+                    [
+                        sys.executable, str(ROOT / "scripts/generate_image.py"),
+                        "--prompt", "Animate a loop.", "--model", "gpt-image-2.6-sunburst",
+                        "--output-format", "gif", "--dry-run", "--json", *flags,
+                    ],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(message, json.loads(result.stdout)["error"])
+
     def test_extra_param_cannot_override_prompt(self):
         proc = subprocess.run(
             [

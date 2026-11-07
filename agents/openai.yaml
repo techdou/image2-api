@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image 2 API"
+  short_description: "Create images and GIFs with GPT Image 2.6"
+  default_prompt: "Use $image2-api to generate a looping GIF with GPT Image 2.6 through my configured Images API."
